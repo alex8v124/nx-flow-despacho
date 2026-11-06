@@ -142,6 +142,13 @@ export default function ExecutiveModal({
       setWebhookStatus({ ok: false, message: 'Ingrese una URL válida (http/https)' });
       return;
     }
+    if (webhookUrl.includes('docs.google.com/spreadsheets/')) {
+      setWebhookStatus({
+        ok: false,
+        message: '⚠️ Has pegado el enlace de visualización web de Google Sheets (error 405). Para enviar datos a Sheets debes usar la URL de Apps Script (/exec) o un conector Make/Zapier/Webhook.site.',
+      });
+      return;
+    }
     setWebhookStatus({ ok: null, message: 'Enviando payload de prueba…' });
     const dummyPayload = {
       event: 'ORDER_DISPATCH_TEST',
@@ -582,6 +589,42 @@ export default function ExecutiveModal({
                     {webhookStatus.message}
                   </p>
                 )}
+
+                {webhookUrl.includes('docs.google.com/spreadsheets') && (
+                  <div className="rounded-xl border border-rose-500/50 bg-rose-500/15 p-2.5 text-xs text-rose-200">
+                    <p className="font-bold">⚠️ Has pegado el enlace web de Google Sheets (genera error 405 Method Not Allowed).</p>
+                    <p className="mt-1 text-[11px] text-slate-300">
+                      Google Sheets no acepta llamadas POST a su interfaz web. Debes usar la URL de <strong>Apps Script (/exec)</strong> o una plataforma como <strong>Make.com / Webhook.site</strong>.
+                    </p>
+                  </div>
+                )}
+
+                <details className="mt-1 text-xs text-slate-400">
+                  <summary className="cursor-pointer font-semibold text-cyan-300 hover:underline">
+                    💡 ¿Cómo conectar tu Google Sheets gratis en 2 minutos? (Ver código)
+                  </summary>
+                  <div className="mt-2 space-y-1.5 rounded-xl bg-ink-950/90 p-3 text-[11px] text-slate-300 border border-ink-700">
+                    <p>1. En tu Google Sheet ve al menú: <strong>Extensiones &gt; Apps Script</strong>.</p>
+                    <p>2. Borra el código existente y pega esto:</p>
+                    <pre className="overflow-x-auto rounded bg-ink-900 p-2 text-cyan-300 font-mono text-[10px]">
+{`function doPost(e) {
+  var sheet = SpreadsheetApp.getActiveSpreadsheet().getActiveSheet();
+  var d = JSON.parse(e.postData.contents);
+  sheet.appendRow([
+    new Date(),
+    d.orderId,
+    d.customer ? d.customer.name : 'Varios',
+    d.customer ? (d.customer.docNumber || '-') : '-',
+    d.totals ? (d.totals.totalCents / 100).toFixed(2) : 0
+  ]);
+  return ContentService.createTextOutput("OK");
+}`}
+                    </pre>
+                    <p>3. Arriba a la derecha: <strong>Implementar &gt; Nueva implementación</strong>.</p>
+                    <p>4. Tipo: <em>Aplicación web</em> | Acceso: <strong>Cualquiera (Anyone)</strong>.</p>
+                    <p>5. Copia la URL que termina en <code>/exec</code> y pégala aquí.</p>
+                  </div>
+                </details>
               </div>
 
               {/* Acciones de exportación */}
