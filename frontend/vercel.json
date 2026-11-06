@@ -1,0 +1,24 @@
+{
+  "rewrites": [
+    {
+      "source": "/lookup/ruc/:num",
+      "destination": "https://api.apis.net.pe/v1/ruc?numero=:num"
+    },
+    {
+      "source": "/lookup/dni/:num",
+      "destination": "https://api.apis.net.pe/v1/dni?numero=:num"
+    },
+    {
+      "source": "/api/lookup/ruc/:num",
+      "destination": "https://api.apis.net.pe/v1/ruc?numero=:num"
+    },
+    {
+      "source": "/api/lookup/dni/:num",
+      "destination": "https://api.apis.net.pe/v1/dni?numero=:num"
+    },
+    {
+      "source": "/((?!api/|lookup/).*)",
+      "destination": "/index.html"
+    }
+  ]
+}

@@ -26,11 +26,13 @@ export async function fetchStock(sedeId) {
 
 const LOCAL_DIRECTORY = {
   RUC: {
+    '20524854521': { name: 'VMWARE SISTEMA INTEGRAL DE SEGURIDAD S.A.C.-VMWARESIS S.A.C.', estado: 'ACTIVO', condicion: 'HABIDO' },
     '20100070970': { name: "SUPERMERCADOS PERUANOS SOCIEDAD ANONIMA 'O ' S.P.S.A.", estado: 'ACTIVO', condicion: 'HABIDO' },
     '20131312955': { name: 'SUNAT - SUPERINTENDENCIA NACIONAL DE ADUANAS Y DE ADMINISTRACION TRIBUTARIA', estado: 'ACTIVO', condicion: 'HABIDO' },
     '20100128056': { name: 'SEDAPAL S.A.', estado: 'ACTIVO', condicion: 'HABIDO' },
   },
   DNI: {
+    '72407570': { name: 'JUAN ALEXANDER MIRANDA QUISPE' },
     '47854125': { name: 'MARICELA GOMEZ PAIMA' },
     '10203040': { name: 'JUAN CARLOS MIRANDA QUISPE' },
     '87654321': { name: 'VERONICA CAMPOS BALDEON' },
@@ -39,31 +41,56 @@ const LOCAL_DIRECTORY = {
 
 /**
  * Consulta de documento peruano (RUC ante SUNAT / DNI ante RENIEC).
- * Prioriza backend de Nodux Flow, con fallback a gateway público y directorio demo offline.
+ * Soporta Vercel rewrites, backend Lambda en CloudFront, Vite proxy y directorio offline.
  */
 export async function lookupDocument(type, number) {
   const t = type.toUpperCase();
   const num = String(number || '').trim();
 
-  // 1. Probar ruta relativa del servidor /lookup/... (manejada por Vite en dev/preview y CloudFront en prod)
-  try {
-    const res = await fetch(`/lookup/${t.toLowerCase()}/${num}`, {
-      headers: { 'Accept': 'application/json' },
-      signal: AbortSignal.timeout(6000),
-    });
-    if (res.ok) {
-      const data = await res.json();
-      if (data && data.found) return data;
+  // 1. Probar endpoints relativos (Vercel rewrites, Vite dev proxy, CloudFront)
+  const endpoints = [
+    `/lookup/${t.toLowerCase()}/${num}`,
+    `/api/lookup/${t.toLowerCase()}/${num}`,
+    `/api/lookup?type=${t.toLowerCase()}&num=${num}`,
+  ];
+
+  for (const url of endpoints) {
+    try {
+      const res = await fetch(url, {
+        headers: { Accept: 'application/json' },
+        signal: AbortSignal.timeout(6000),
+      });
+      if (res.ok) {
+        const data = await res.json();
+        const name = data && (data.name || data.nombre);
+        if (name) {
+          return {
+            found: true,
+            name: String(name).trim(),
+            estado: data.estado || 'ACTIVO',
+            condicion: data.condicion || 'HABIDO',
+            direccion: data.direccion || undefined,
+          };
+        }
+      }
+    } catch {
+      // continuar al siguiente endpoint
     }
-  } catch {
-    // continuar al siguiente método
   }
 
-  // 2. Si hay backend API_URL explícita (p. ej. en pruebas locales contra Node backend)
+  // 2. Si hay backend API_URL explícita
   if (API_URL) {
     try {
       const { status, data } = await request(`/lookup/${t.toLowerCase()}/${num}`);
-      if (status === 200 && data.found) return data;
+      const name = data && (data.name || data.nombre);
+      if (status === 200 && name) {
+        return {
+          found: true,
+          name: String(name).trim(),
+          estado: data.estado || 'ACTIVO',
+          condicion: data.condicion || 'HABIDO',
+        };
+      }
     } catch {
       // continuar a fallback
     }
