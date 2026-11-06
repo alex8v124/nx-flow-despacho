@@ -5,7 +5,7 @@ import { lookupDocument } from '../lib/api.js';
 import { IconCheck, IconWhatsApp, IconX } from './icons.jsx';
 
 const field =
-  'h-14 w-full rounded-xl border border-ink-600 bg-ink-800 px-4 text-base text-white placeholder:text-slate-500 outline-none focus:border-cyan-400 disabled:opacity-85 disabled:cursor-not-allowed disabled:border-emerald-500/40 disabled:bg-ink-800/90';
+  'h-11 w-full rounded-xl border border-ink-700/80 bg-ink-800/70 px-3 text-sm text-white placeholder:text-slate-500 outline-none focus:border-cyan-400 focus:bg-ink-800 disabled:opacity-85 disabled:cursor-not-allowed disabled:border-emerald-500/40 disabled:bg-ink-800/90 transition-colors';
 
 const RESERVATION_LABEL = {
   RESERVED: { text: 'Stock reservado en DynamoDB', cls: 'text-emerald-300' },
@@ -29,12 +29,12 @@ function Success({ result, onNewOrder, onViewProforma }) {
       <p className="text-sm text-slate-400">del primer producto al WhatsApp</p>
       <p className={`mt-4 text-sm font-medium ${r.cls}`}>{r.text}</p>
 
-      <div className="mt-6 grid w-full gap-2.5">
+      <div className="mt-5 grid w-full gap-2">
         <a
           href={result.url}
           target="_blank"
           rel="noopener noreferrer"
-          className="flex h-14 items-center justify-center gap-2 rounded-2xl border-2 border-emerald-500 text-base font-bold text-emerald-300 active:bg-emerald-500/10 transition-all"
+          className="flex h-11 items-center justify-center gap-2 rounded-xl border-2 border-emerald-500 text-sm font-bold text-emerald-300 active:bg-emerald-500/10 transition-all"
         >
           <IconWhatsApp /> Abrir WhatsApp
         </a>
@@ -42,7 +42,7 @@ function Success({ result, onNewOrder, onViewProforma }) {
           <button
             type="button"
             onClick={onViewProforma}
-            className="flex h-14 items-center justify-center gap-2 rounded-2xl border border-cyan-400/60 bg-cyan-400/10 text-base font-bold text-cyan-300 active:bg-cyan-400/20 transition-all"
+            className="flex h-11 items-center justify-center gap-2 rounded-xl border border-cyan-400/60 bg-cyan-400/10 text-sm font-bold text-cyan-300 active:bg-cyan-400/20 transition-all"
           >
             📄 Ver Proforma Formal B2B
           </button>
@@ -50,7 +50,7 @@ function Success({ result, onNewOrder, onViewProforma }) {
         <button
           type="button"
           onClick={onNewOrder}
-          className="h-14 rounded-2xl bg-cyan-400 text-base font-bold text-ink-950 active:bg-cyan-300 transition-all"
+          className="h-11 rounded-xl bg-cyan-400 text-sm font-bold text-ink-950 active:bg-cyan-300 transition-all"
         >
           Nuevo pedido
         </button>
@@ -238,48 +238,62 @@ export default function CheckoutSheet({
         {result ? (
           <Success result={result} onNewOrder={handleResetAndNewOrder} onViewProforma={onViewProforma} />
         ) : (
-          <form onSubmit={submit} className="space-y-4">
+          <form onSubmit={submit} className="space-y-3">
             <div className="flex items-center justify-between">
               <div>
-                <h2 className="text-xl font-extrabold text-white">Confirmar despacho</h2>
-                <p className="text-sm text-slate-400">{sede.name}</p>
+                <h2 className="text-lg font-bold text-white">Confirmar despacho</h2>
+                <p className="text-xs text-slate-400">{sede.name}</p>
               </div>
-              <button type="button" onClick={onClose} aria-label="Cerrar" className="grid h-12 w-12 place-items-center rounded-xl bg-ink-800 text-slate-300">
-                <IconX />
+              <button
+                type="button"
+                onClick={onClose}
+                aria-label="Cerrar"
+                className="grid h-8 w-8 place-items-center rounded-lg bg-ink-800 text-slate-300 hover:text-white"
+              >
+                <IconX width={16} height={16} />
               </button>
             </div>
 
-            <ul className="divide-y divide-ink-700 rounded-2xl border border-ink-700 bg-ink-800/60">
-              {lines.map((l) => (
-                <li key={l.sku} className="flex items-baseline gap-3 px-4 py-2.5">
-                  <span className="w-10 shrink-0 text-right font-bold tabular-nums text-cyan-300">{l.qty}×</span>
-                  <span className="min-w-0 flex-1 truncate text-sm text-slate-200">{l.name}</span>
-                  <span className="shrink-0 text-sm font-semibold tabular-nums text-white">{soles(l.lineTotalCents)}</span>
-                </li>
-              ))}
-              <li className="space-y-0.5 px-4 py-3 text-sm">
+            {/* Resumen compacto de ítems */}
+            <div className="rounded-xl border border-ink-700/80 bg-ink-800/40 divide-y divide-ink-800/60 overflow-hidden">
+              <div className="max-h-28 overflow-y-auto divide-y divide-ink-800/60">
+                {lines.map((l) => (
+                  <div key={l.sku} className="flex items-center justify-between px-3 py-1.5 text-xs">
+                    <div className="min-w-0 flex-1 truncate text-slate-200">
+                      <span className="font-bold tabular-nums text-cyan-300 mr-1.5">{l.qty}×</span>
+                      <span>{l.name}</span>
+                    </div>
+                    <span className="shrink-0 font-semibold tabular-nums text-white ml-2">
+                      {soles(l.lineTotalCents)}
+                    </span>
+                  </div>
+                ))}
+              </div>
+              <div className="space-y-0.5 px-3 py-2 text-xs bg-ink-900/60">
                 <div className="flex justify-between text-slate-400">
                   <span>Op. gravada</span>
                   <span className="tabular-nums">{soles(totals.gravadaCents)}</span>
                 </div>
                 <div className="flex justify-between text-slate-400">
-                  <span>IGV 18%</span>
+                  <span>IGV (18%)</span>
                   <span className="tabular-nums">{soles(totals.igvCents)}</span>
                 </div>
-                <div className="flex justify-between pt-1 text-lg font-extrabold text-white">
+                <div className="flex justify-between pt-1 text-sm font-bold text-white border-t border-ink-800/60">
                   <span>Total</span>
-                  <span className="tabular-nums">{soles(totals.totalCents)}</span>
+                  <span className="tabular-nums text-cyan-300">{soles(totals.totalCents)}</span>
                 </div>
-              </li>
-            </ul>
+              </div>
+            </div>
 
-            <div className="grid grid-cols-2 gap-2 rounded-2xl bg-ink-800 p-1">
+            <div className="grid grid-cols-2 gap-1.5 rounded-xl bg-ink-800/80 p-1">
               {['BOLETA', 'FACTURA'].map((k) => (
                 <button
                   key={k}
                   type="button"
                   onClick={() => setKind(k)}
-                  className={`h-12 rounded-xl text-sm font-bold tracking-wide ${kind === k ? 'bg-cyan-400 text-ink-950' : 'text-slate-400'}`}
+                  className={`h-8 rounded-lg text-xs font-bold tracking-wide transition-all ${
+                    kind === k ? 'bg-cyan-400 text-ink-950 shadow-sm' : 'text-slate-400 hover:text-white'
+                  }`}
                 >
                   {k === 'BOLETA' ? 'Boleta' : 'Factura'}
                 </button>
@@ -302,19 +316,19 @@ export default function CheckoutSheet({
                     type="button"
                     onClick={() => executeLookup(kind, current.doc)}
                     disabled={lookingUp || !docClean}
-                    className="shrink-0 h-14 px-4 rounded-xl border border-cyan-400/40 bg-cyan-400/10 text-cyan-300 font-bold text-xs hover:bg-cyan-400/20 active:scale-95 disabled:opacity-30 disabled:pointer-events-none transition-all"
+                    className="shrink-0 h-11 px-3 rounded-xl border border-cyan-400/40 bg-cyan-400/10 text-cyan-300 font-bold text-xs hover:bg-cyan-400/20 active:scale-95 disabled:opacity-30 disabled:pointer-events-none transition-all"
                   >
                     {lookingUp ? 'Buscando…' : 'Consultar'}
                   </button>
                 </div>
                 {lookingUp && (
-                  <p className="mt-1.5 flex items-center gap-1.5 text-xs font-semibold text-cyan-300">
+                  <p className="mt-1 flex items-center gap-1.5 text-xs font-semibold text-cyan-300">
                     <span className="inline-block h-2 w-2 animate-ping rounded-full bg-cyan-400" />
                     Consultando padrón {kind === 'FACTURA' ? 'SUNAT' : 'RENIEC'}…
                   </p>
                 )}
                 {current.status && !lookingUp && (
-                  <div className="mt-1.5 flex items-center justify-between text-xs">
+                  <div className="mt-1 flex items-center justify-between text-xs">
                     <span className={current.locked ? 'font-semibold text-emerald-300' : 'text-amber-300 font-medium'}>
                       {current.locked ? '✓ ' : 'ℹ '} {current.status}
                     </span>
@@ -363,7 +377,7 @@ export default function CheckoutSheet({
                 )}
               </div>
 
-              <div className="grid grid-cols-2 gap-3">
+              <div className="grid grid-cols-2 gap-2">
                 <input className={field} placeholder="Vendedor" value={seller} maxLength={60} onChange={(e) => setSeller(e.target.value)} />
                 <input
                   className={field}
@@ -376,10 +390,10 @@ export default function CheckoutSheet({
 
               {/* Condición de Pago B2B */}
               <div>
-                <span className="mb-1 block text-[11px] font-bold uppercase tracking-wider text-slate-400">
+                <span className="mb-1 block text-[10px] font-bold uppercase tracking-wider text-slate-400">
                   Condición de Pago:
                 </span>
-                <div className="grid grid-cols-3 gap-1.5 rounded-xl bg-ink-800 p-1 text-xs font-semibold">
+                <div className="grid grid-cols-3 gap-1 rounded-xl bg-ink-800/80 p-1 text-xs font-semibold">
                   {[
                     { key: 'CONTADO', label: 'Contado' },
                     { key: 'CREDITO_15', label: 'Crédito 15d' },
@@ -389,7 +403,7 @@ export default function CheckoutSheet({
                       key={cp.key}
                       type="button"
                       onClick={() => setCondicionPago(cp.key)}
-                      className={`h-9 rounded-lg transition-all ${
+                      className={`h-8 rounded-lg text-xs transition-all ${
                         condicionPago === cp.key
                           ? 'bg-cyan-400 text-ink-950 font-bold shadow-sm'
                           : 'text-slate-400 hover:text-white'
@@ -404,34 +418,34 @@ export default function CheckoutSheet({
               <input className={field} placeholder="Nota de despacho (opcional)" value={notes} maxLength={280} onChange={(e) => setNotes(e.target.value)} />
             </div>
 
-            {docError && <p className="text-sm font-medium text-amber-300">{docError}</p>}
+            {docError && <p className="text-xs font-medium text-amber-300">{docError}</p>}
 
             {error && (
-              <div className="rounded-2xl border border-red-500/40 bg-red-500/10 p-4 text-sm text-red-200">
+              <div className="rounded-xl border border-red-500/40 bg-red-500/10 p-3 text-xs text-red-200">
                 <p className="font-bold">{error.message || 'No se pudo reservar el pedido'}</p>
                 {Array.isArray(error.details) && (
-                  <ul className="mt-2 space-y-1">
+                  <ul className="mt-1 space-y-0.5">
                     {error.details.map((d) => (
-                      <li key={d.sku} className="font-mono text-xs">
+                      <li key={d.sku} className="font-mono text-[11px]">
                         {d.sku}: pidió {d.requested ?? '-'}, disponible {d.available ?? 0}
                         {d.reason === 'PRICE_CHANGED' ? ' (precio actualizado)' : ''}
                       </li>
                     ))}
                   </ul>
                 )}
-                <p className="mt-2 text-xs text-red-300/80">Ajustamos las cantidades al stock real. Revise y vuelva a enviar.</p>
+                <p className="mt-1 text-[11px] text-red-300/80">Ajustamos las cantidades al stock real. Revise y vuelva a enviar.</p>
               </div>
             )}
 
             <button
               type="submit"
               disabled={!canSubmit}
-              className="flex h-16 w-full items-center justify-center gap-2 rounded-2xl bg-emerald-500 text-lg font-extrabold text-ink-950 shadow-lg shadow-emerald-500/20 active:scale-[0.99] active:bg-emerald-400 disabled:bg-ink-700 disabled:text-ink-500 disabled:shadow-none"
+              className="flex h-12 w-full items-center justify-center gap-2 rounded-xl bg-emerald-500 text-base font-bold text-ink-950 shadow-md shadow-emerald-500/20 active:scale-[0.99] active:bg-emerald-400 disabled:bg-ink-800 disabled:text-slate-500 disabled:shadow-none transition-all"
             >
-              <IconWhatsApp />
+              <IconWhatsApp width={20} height={20} />
               {busy ? 'Reservando stock…' : 'Enviar pedido por WhatsApp'}
             </button>
-            <p className="pb-2 text-center text-xs text-slate-500">
+            <p className="pb-1 text-center text-[11px] text-slate-500">
               {phone ? 'Se abrirá el chat con el número indicado' : 'Sin número: WhatsApp le pedirá elegir el contacto'}
             </p>
           </form>
