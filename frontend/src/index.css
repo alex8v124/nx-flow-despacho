@@ -18,6 +18,7 @@
   }
   body {
     overscroll-behavior-y: none;
+    transition: background-color 0.2s ease, color 0.2s ease;
   }
   input[type='number']::-webkit-inner-spin-button,
   input[type='number']::-webkit-outer-spin-button {
@@ -66,4 +67,155 @@
 }
 .animate-pop {
   animation: pop 0.35s ease-out;
+}
+
+/* ========================================================
+   MODO CLARO (LIGHT THEME) PARA NODUX FLOW
+   Interfaz nítida, ligera, de alto contraste para móviles
+   ======================================================== */
+html[data-theme='light'] {
+  --color-ink-950: #f8fafc; /* Canvas de fondo limpio */
+  --color-ink-900: #ffffff; /* Cabecera, modales, sheets */
+  --color-ink-800: #f1f5f9; /* Contenedores secundarios y campos */
+  --color-ink-700: #e2e8f0; /* Bordes suaves */
+  --color-ink-600: #cbd5e1;
+  --color-ink-500: #94a3b8;
+
+  color-scheme: light;
+}
+
+html[data-theme='light'] body {
+  background-color: #f8fafc !important;
+  color: #0f172a !important;
+}
+
+/* Textos principales y títulos en modo claro */
+html[data-theme='light'] .text-white {
+  color: #0f172a !important;
+}
+
+html[data-theme='light'] .text-slate-100 {
+  color: #0f172a !important;
+}
+
+html[data-theme='light'] .text-slate-200 {
+  color: #1e293b !important;
+}
+
+html[data-theme='light'] .text-slate-300 {
+  color: #334155 !important;
+}
+
+html[data-theme='light'] .text-slate-400 {
+  color: #64748b !important;
+}
+
+html[data-theme='light'] .text-slate-500 {
+  color: #64748b !important;
+}
+
+/* Fondos y superficies en modo claro */
+html[data-theme='light'] .bg-ink-950 {
+  background-color: #f8fafc !important;
+}
+
+html[data-theme='light'] .bg-ink-900 {
+  background-color: #ffffff !important;
+}
+
+html[data-theme='light'] .bg-ink-900\/95,
+html[data-theme='light'] .bg-ink-900\/90,
+html[data-theme='light'] .bg-ink-900\/80,
+html[data-theme='light'] .bg-ink-950\/85,
+html[data-theme='light'] .bg-ink-950\/90 {
+  background-color: rgba(255, 255, 255, 0.95) !important;
+  backdrop-filter: blur(12px);
+}
+
+html[data-theme='light'] .bg-ink-900\/50,
+html[data-theme='light'] .bg-ink-900\/40 {
+  background-color: #ffffff !important;
+  box-shadow: 0 1px 3px 0 rgba(0, 0, 0, 0.04), 0 1px 2px -1px rgba(0, 0, 0, 0.04);
+}
+
+html[data-theme='light'] .bg-ink-800,
+html[data-theme='light'] .bg-ink-800\/90,
+html[data-theme='light'] .bg-ink-800\/80,
+html[data-theme='light'] .bg-ink-800\/70,
+html[data-theme='light'] .bg-ink-800\/60,
+html[data-theme='light'] .bg-ink-800\/40 {
+  background-color: #f1f5f9 !important;
+}
+
+html[data-theme='light'] .bg-ink-700 {
+  background-color: #e2e8f0 !important;
+  color: #334155 !important;
+}
+
+/* Bordes en modo claro */
+html[data-theme='light'] .border-ink-800,
+html[data-theme='light'] .border-ink-800\/80,
+html[data-theme='light'] .border-ink-800\/70,
+html[data-theme='light'] .border-ink-800\/60,
+html[data-theme='light'] .border-ink-800\/40,
+html[data-theme='light'] .border-ink-700,
+html[data-theme='light'] .border-ink-700\/80,
+html[data-theme='light'] .border-ink-700\/70,
+html[data-theme='light'] .border-ink-700\/60,
+html[data-theme='light'] .border-ink-600 {
+  border-color: #e2e8f0 !important;
+}
+
+/* Campos de entrada en modo claro */
+html[data-theme='light'] input:not([type='checkbox']):not([type='radio']),
+html[data-theme='light'] select,
+html[data-theme='light'] textarea {
+  color: #0f172a !important;
+  border-color: #cbd5e1 !important;
+}
+
+html[data-theme='light'] input::placeholder {
+  color: #94a3b8 !important;
+}
+
+/* Items seleccionados en el carrito */
+html[data-theme='light'] .bg-cyan-950\/20 {
+  background-color: #f0f9ff !important;
+  border-color: #38bdf8 !important;
+}
+
+html[data-theme='light'] .text-cyan-400,
+html[data-theme='light'] .text-cyan-400\/90 {
+  color: #0284c7 !important;
+}
+
+html[data-theme='light'] .text-cyan-300 {
+  color: #0369a1 !important;
+}
+
+/* Botones principales con contraste óptimo */
+html[data-theme='light'] .bg-emerald-500 {
+  background-color: #059669 !important;
+  color: #ffffff !important;
+}
+
+html[data-theme='light'] .bg-cyan-400 {
+  background-color: #0284c7 !important;
+  color: #ffffff !important;
+}
+
+html[data-theme='light'] .bg-amber-400 {
+  background-color: #d97706 !important;
+  color: #ffffff !important;
+}
+
+html[data-theme='light'] .text-ink-950 {
+  color: #ffffff !important;
+}
+
+/* Fondos atenuados para modales emergentes */
+html[data-theme='light'] .bg-black\/75,
+html[data-theme='light'] .bg-black\/80,
+html[data-theme='light'] .bg-black\/60 {
+  background-color: rgba(15, 23, 42, 0.45) !important;
 }

@@ -40,6 +40,27 @@ const TARIFAS = {
 
 export default function App() {
   const online = useOnline();
+  // Modo Claro / Modo Oscuro
+  const [theme, setTheme] = useState(() => store.get('nf.theme', 'dark'));
+
+  useEffect(() => {
+    store.set('nf.theme', theme);
+    if (typeof document !== 'undefined') {
+      document.documentElement.setAttribute('data-theme', theme);
+      if (theme === 'light') {
+        document.documentElement.classList.add('light');
+        document.documentElement.classList.remove('dark');
+      } else {
+        document.documentElement.classList.add('dark');
+        document.documentElement.classList.remove('light');
+      }
+    }
+  }, [theme]);
+
+  const toggleTheme = () => {
+    setTheme((prev) => (prev === 'light' ? 'dark' : 'light'));
+  };
+
   // Detección de Caso de Uso 2: Portal B2B de Autopedido para Clientes/Contratistas
   const isClientPortal = useMemo(() => {
     if (typeof window === 'undefined') return false;
@@ -570,6 +591,17 @@ export default function App() {
                 </option>
               ))}
             </select>
+
+            {/* Alternador de Modo Claro / Oscuro */}
+            <button
+              type="button"
+              onClick={toggleTheme}
+              aria-label={theme === 'dark' ? 'Cambiar a modo claro' : 'Cambiar a modo oscuro'}
+              title={theme === 'dark' ? 'Modo claro (☀️)' : 'Modo oscuro (🌙)'}
+              className="grid h-6 w-6 place-items-center rounded-md border border-ink-700/70 bg-ink-800/90 text-[11px] text-slate-300 hover:text-white active:scale-90 transition-all shrink-0"
+            >
+              {theme === 'dark' ? '☀️' : '🌙'}
+            </button>
           </div>
         </div>
 
