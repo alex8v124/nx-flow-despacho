@@ -314,8 +314,8 @@ export default function CheckoutSheet({ open, sede, lines, totals, defaults, bus
                 />
                 {current.locked && (
                   <div className="absolute right-3 top-1/2 -translate-y-1/2 flex items-center gap-2">
-                    <span className="rounded bg-emerald-500/20 px-2 py-0.5 text-[10px] font-bold uppercase tracking-wider text-emerald-300 border border-emerald-500/30">
-                      Inhabilitado
+                    <span className="rounded bg-emerald-500/15 px-2 py-0.5 text-[10px] font-bold uppercase tracking-wider text-emerald-300 border border-emerald-500/20">
+                      ✓ Verificado
                     </span>
                     <button
                       type="button"
