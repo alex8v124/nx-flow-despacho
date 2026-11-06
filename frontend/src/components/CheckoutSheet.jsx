@@ -51,8 +51,9 @@ function Success({ result, onNewOrder }) {
 
 export default function CheckoutSheet({ open, sede, lines, totals, defaults, busy, error, result, onClose, onSubmit, onNewOrder }) {
   const [kind, setKind] = useState('BOLETA');
-  const [name, setName] = useState('');
-  const [doc, setDoc] = useState('');
+  // Formularios 100% independientes para Boleta y Factura
+  const [boleta, setBoleta] = useState({ name: '', doc: '' });
+  const [factura, setFactura] = useState({ name: '', doc: '' });
   const [seller, setSeller] = useState(defaults.seller);
   const [phone, setPhone] = useState(defaults.phone);
   const [notes, setNotes] = useState('');
@@ -66,25 +67,62 @@ export default function CheckoutSheet({ open, sede, lines, totals, defaults, bus
 
   if (!open) return null;
 
-  const docClean = doc.replace(/\D/g, '');
+  const current = kind === 'FACTURA' ? factura : boleta;
+  const docClean = current.doc.replace(/\D/g, '');
+
   let docError = '';
   if (kind === 'FACTURA') {
-    if (!isValidRuc(docClean)) docError = docClean.length === 11 ? 'RUC inválido (dígito verificador)' : 'RUC de 11 dígitos';
-    else if (!name.trim()) docError = 'Ingrese la razón social';
-  } else if (docClean && docClean.length !== 8) docError = 'DNI de 8 dígitos';
+    if (docClean.length > 0 && !isValidRuc(docClean)) {
+      docError = docClean.length === 11 ? 'RUC inválido (dígito verificador SUNAT)' : 'RUC debe tener 11 dígitos';
+    } else if (docClean.length === 11 && !factura.name.trim()) {
+      docError = 'Ingrese la razón social de la empresa';
+    }
+  } else {
+    if (docClean.length > 0 && docClean.length !== 8) {
+      docError = 'DNI debe tener 8 dígitos';
+    }
+  }
+
+  const isFacturaReady = kind !== 'FACTURA' || (isValidRuc(docClean) && factura.name.trim().length > 0);
+  const isBoletaReady = kind !== 'BOLETA' || (docClean.length === 0 || docClean.length === 8);
+  const canSubmit = !busy && !docError && isFacturaReady && isBoletaReady;
+
+  const handleDocChange = (val) => {
+    if (kind === 'FACTURA') {
+      setFactura((prev) => ({ ...prev, doc: val }));
+    } else {
+      setBoleta((prev) => ({ ...prev, doc: val }));
+    }
+  };
+
+  const handleNameChange = (val) => {
+    if (kind === 'FACTURA') {
+      setFactura((prev) => ({ ...prev, name: val }));
+    } else {
+      setBoleta((prev) => ({ ...prev, name: val }));
+    }
+  };
 
   const submit = (e) => {
     e.preventDefault();
-    if (docError || busy) return;
+    if (!canSubmit) return;
+
     const customer =
       kind === 'FACTURA'
-        ? { name: name.trim(), docType: 'RUC', docNumber: docClean }
+        ? { name: factura.name.trim(), docType: 'RUC', docNumber: docClean }
         : docClean
-          ? { name: name.trim() || undefined, docType: 'DNI', docNumber: docClean }
-          : name.trim()
-            ? { name: name.trim() }
+          ? { name: boleta.name.trim() || undefined, docType: 'DNI', docNumber: docClean }
+          : boleta.name.trim()
+            ? { name: boleta.name.trim() }
             : undefined;
+
     onSubmit({ customer, seller: seller.trim(), phone: phone.trim(), notes: notes.trim() });
+  };
+
+  const handleResetAndNewOrder = () => {
+    setBoleta({ name: '', doc: '' });
+    setFactura({ name: '', doc: '' });
+    onNewOrder();
   };
 
   return (
@@ -95,7 +133,7 @@ export default function CheckoutSheet({ open, sede, lines, totals, defaults, bus
       >
         <div className="mx-auto mb-3 h-1.5 w-12 rounded-full bg-ink-600" />
         {result ? (
-          <Success result={result} onNewOrder={onNewOrder} />
+          <Success result={result} onNewOrder={handleResetAndNewOrder} />
         ) : (
           <form onSubmit={submit} className="space-y-4">
             <div className="flex items-center justify-between">
@@ -150,17 +188,17 @@ export default function CheckoutSheet({ open, sede, lines, totals, defaults, bus
                 className={field}
                 inputMode="numeric"
                 autoComplete="off"
-                placeholder={kind === 'FACTURA' ? 'RUC del cliente *' : 'DNI (opcional)'}
-                value={doc}
+                placeholder={kind === 'FACTURA' ? 'RUC de la empresa * (11 dígitos)' : 'DNI del cliente (opcional)'}
+                value={current.doc}
                 maxLength={kind === 'FACTURA' ? 11 : 8}
-                onChange={(e) => setDoc(e.target.value)}
+                onChange={(e) => handleDocChange(e.target.value)}
               />
               <input
                 className={field}
-                placeholder={kind === 'FACTURA' ? 'Razón social *' : 'Nombre del cliente (opcional)'}
-                value={name}
+                placeholder={kind === 'FACTURA' ? 'Razón social de la empresa *' : 'Nombre del cliente (opcional)'}
+                value={current.name}
                 maxLength={80}
-                onChange={(e) => setName(e.target.value)}
+                onChange={(e) => handleNameChange(e.target.value)}
               />
               <div className="grid grid-cols-2 gap-3">
                 <input className={field} placeholder="Vendedor" value={seller} maxLength={60} onChange={(e) => setSeller(e.target.value)} />
@@ -175,7 +213,7 @@ export default function CheckoutSheet({ open, sede, lines, totals, defaults, bus
               <input className={field} placeholder="Nota de despacho (opcional)" value={notes} maxLength={280} onChange={(e) => setNotes(e.target.value)} />
             </div>
 
-            {docError && doc && <p className="text-sm font-medium text-amber-300">{docError}</p>}
+            {docError && <p className="text-sm font-medium text-amber-300">{docError}</p>}
 
             {error && (
               <div className="rounded-2xl border border-red-500/40 bg-red-500/10 p-4 text-sm text-red-200">
@@ -196,7 +234,7 @@ export default function CheckoutSheet({ open, sede, lines, totals, defaults, bus
 
             <button
               type="submit"
-              disabled={busy || Boolean(docError && (kind === 'FACTURA' || doc))}
+              disabled={!canSubmit}
               className="flex h-16 w-full items-center justify-center gap-2 rounded-2xl bg-emerald-500 text-lg font-extrabold text-ink-950 shadow-lg shadow-emerald-500/20 active:scale-[0.99] active:bg-emerald-400 disabled:bg-ink-700 disabled:text-ink-500 disabled:shadow-none"
             >
               <IconWhatsApp />
