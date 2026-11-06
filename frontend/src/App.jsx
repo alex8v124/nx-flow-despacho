@@ -9,6 +9,7 @@ import { useDebounce, useOnline } from './hooks.js';
 import ProductRow from './components/ProductRow.jsx';
 import CheckoutBar from './components/CheckoutBar.jsx';
 import CheckoutSheet from './components/CheckoutSheet.jsx';
+import ExecutiveModal from './components/ExecutiveModal.jsx';
 import { IconSearch, IconX, IconReset } from './components/icons.jsx';
 
 const STORAGE_KEYS = {
@@ -17,6 +18,13 @@ const STORAGE_KEYS = {
   STARTED: 'nf.started',
   SELLER: 'nf.seller',
   PHONE: 'nf.phone',
+  TARIFA: 'nf.tarifa',
+};
+
+const TARIFAS = {
+  MOSTRADOR: { key: 'MOSTRADOR', label: 'Mostrador', factor: 1.0, badge: 'PVP' },
+  TALLER: { key: 'TALLER', label: 'Taller', factor: 0.92, badge: '-8%' },
+  MAYORISTA: { key: 'MAYORISTA', label: 'Mayorista', factor: 0.85, badge: '-15%' },
 };
 
 const searchIndex = buildIndex(catalogData.products);
@@ -25,6 +33,8 @@ const categories = ['Todas', ...new Set(catalogData.products.map((p) => p.catego
 export default function App() {
   const online = useOnline();
   const [sedeId, setSedeId] = useState(() => store.get(STORAGE_KEYS.SEDE, catalogData.sedes[0].id));
+  const [tarifaKey, setTarifaKey] = useState(() => store.get(STORAGE_KEYS.TARIFA, 'MOSTRADOR'));
+  const [execOpen, setExecOpen] = useState(false);
   const [rawQuery, setRawQuery] = useState('');
   const debouncedQuery = useDebounce(rawQuery, 150);
   const [category, setCategory] = useState('Todas');
@@ -42,6 +52,11 @@ export default function App() {
   const currentSede = useMemo(() => {
     return catalogData.sedes.find((s) => s.id === sedeId) || catalogData.sedes[0];
   }, [sedeId]);
+
+  // Persistir tarifa seleccionada
+  useEffect(() => {
+    store.set(STORAGE_KEYS.TARIFA, tarifaKey);
+  }, [tarifaKey]);
 
   // Persistir sede seleccionada
   useEffect(() => {
@@ -90,6 +105,15 @@ export default function App() {
     setServerStock(null);
   };
 
+  // Cálculo de precio según tarifa B2B segmentada (Mostrador, Taller, Mayorista)
+  const getProductPriceCents = useCallback(
+    (product) => {
+      const factor = TARIFAS[tarifaKey]?.factor || 1.0;
+      return Math.round(product.priceCents * factor);
+    },
+    [tarifaKey],
+  );
+
   // Cantidad y stock por producto
   const getProductStock = useCallback(
     (product) => {
@@ -106,6 +130,23 @@ export default function App() {
       setQuantities((prev) => {
         const product = catalogData.products.find((p) => p.sku === sku);
         const max = product ? getProductStock(product) : 9999;
+
+        // Registrar demanda insatisfecha (Moat para el Gerente Comercial)
+        if (product && (nextQty > max || max === 0)) {
+          const missedQty = max === 0 ? 1 : nextQty - max;
+          const unmetHistory = store.get('nf.unmet_demand', []);
+          unmetHistory.push({
+            sku: product.sku,
+            name: product.name,
+            category: product.category,
+            priceCents: getProductPriceCents(product),
+            requestedQty: missedQty,
+            sedeId,
+            timestamp: new Date().toISOString(),
+          });
+          store.set('nf.unmet_demand', unmetHistory.slice(-100));
+        }
+
         const clamped = Math.max(0, Math.min(nextQty, max));
 
         const updated = { ...prev };
@@ -126,7 +167,7 @@ export default function App() {
         return updated;
       });
     },
-    [getProductStock, startedAt],
+    [getProductStock, startedAt, getProductPriceCents, sedeId],
   );
 
   const resetCart = () => {
@@ -148,18 +189,19 @@ export default function App() {
       .map(([sku, qty]) => {
         const p = catalogData.products.find((item) => item.sku === sku);
         if (!p || qty <= 0) return null;
+        const unitPriceCents = getProductPriceCents(p);
         return {
           sku: p.sku,
           name: p.name,
           category: p.category,
           unit: p.unit,
           qty,
-          unitPriceCents: p.priceCents,
-          lineTotalCents: p.priceCents * qty,
+          unitPriceCents,
+          lineTotalCents: unitPriceCents * qty,
         };
       })
       .filter(Boolean);
-  }, [quantities]);
+  }, [quantities, getProductPriceCents]);
 
   const totalUnits = useMemo(() => cartLines.reduce((acc, l) => acc + l.qty, 0), [cartLines]);
   const totalCents = useMemo(() => cartLines.reduce((acc, l) => acc + l.lineTotalCents, 0), [cartLines]);
@@ -221,6 +263,20 @@ export default function App() {
       reservation,
     });
     const url = buildWhatsAppUrl(phone || currentSede.whatsapp, text);
+
+    // Guardar en historial de pedidos para exportación contable ERP
+    const ordersHistory = store.get('nf.orders_history', []);
+    ordersHistory.push({
+      orderId,
+      date: new Date().toISOString().replace('T', ' ').slice(0, 19),
+      sede: currentSede.name,
+      customer,
+      seller,
+      tarifa: TARIFAS[tarifaKey]?.label || 'Mostrador',
+      lines: cartLines,
+      totals,
+    });
+    store.set('nf.orders_history', ordersHistory.slice(-50));
 
     // Abrir WhatsApp en pestaña/app
     window.open(url, '_blank', 'noopener,noreferrer');
@@ -293,6 +349,35 @@ export default function App() {
               ))}
             </select>
           </div>
+        </div>
+
+        {/* Barra de Tarifas B2B & Moat de Control Gerencial */}
+        <div className="mx-auto flex max-w-2xl items-center justify-between border-t border-ink-800/80 bg-ink-950/40 px-3 py-1.5">
+          <div className="flex items-center gap-1.5 overflow-x-auto no-scrollbar">
+            <span className="text-[10px] font-bold uppercase tracking-wider text-slate-400">Tarifa:</span>
+            {Object.values(TARIFAS).map((t) => (
+              <button
+                key={t.key}
+                type="button"
+                onClick={() => setTarifaKey(t.key)}
+                className={`rounded-lg px-2 py-0.5 text-[11px] font-bold transition-all ${
+                  tarifaKey === t.key
+                    ? 'bg-cyan-400 text-ink-950 shadow-sm shadow-cyan-400/20'
+                    : 'bg-ink-800 text-slate-400 hover:text-white'
+                }`}
+              >
+                {t.label} <span className="opacity-75 font-normal text-[10px]">({t.badge})</span>
+              </button>
+            ))}
+          </div>
+
+          <button
+            type="button"
+            onClick={() => setExecOpen(true)}
+            className="flex shrink-0 items-center gap-1 rounded-lg border border-emerald-500/40 bg-emerald-500/10 px-2.5 py-1 text-[11px] font-bold text-emerald-300 hover:bg-emerald-500/20 active:scale-95 transition-all"
+          >
+            📊 Panel Gerencial
+          </button>
         </div>
 
         {/* Buscador reactivo ultraligero */}
@@ -389,7 +474,7 @@ export default function App() {
                 product={p}
                 qty={quantities[p.sku] || 0}
                 stock={getProductStock(p)}
-                priceCents={p.priceCents}
+                priceCents={getProductPriceCents(p)}
                 onChange={handleQtyChange}
               />
             ))}
@@ -423,6 +508,9 @@ export default function App() {
         onSubmit={handleCheckoutSubmit}
         onNewOrder={handleNewOrder}
       />
+
+      {/* Modal de Control Gerencial B2B (Moat Operativo y Exportación Contable) */}
+      <ExecutiveModal open={execOpen} onClose={() => setExecOpen(false)} />
     </div>
   );
 }
