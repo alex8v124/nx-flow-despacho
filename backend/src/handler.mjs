@@ -8,6 +8,7 @@ import { createService } from './service.mjs';
 import { createWebhookProcessor } from './integrations/webhooks.mjs';
 import { culqiAdapter } from './integrations/culqi.mjs';
 import { createNubefactInvoicing, nubefactAdapter } from './integrations/nubefact.mjs';
+import { createLookupService } from './lookup.mjs';
 
 const SECURITY_HEADERS = {
   'content-type': 'application/json; charset=utf-8',
@@ -24,12 +25,13 @@ const json = (statusCode, body, extra = {}) => ({
 
 const defaultLog = (entry) => console.log(JSON.stringify(entry));
 
-export function createHandler({ config = loadConfig(), repo, service, processWebhook, log = defaultLog } = {}) {
+export function createHandler({ config = loadConfig(), repo, service, processWebhook, lookupService, log = defaultLog } = {}) {
   if (!service) {
     repo ||= createRepository({ doc: createDocClient(config), tableName: config.tableName });
     const invoicing = createNubefactInvoicing({ config, repo });
     service = createService({ repo, config, integrations: { invoicing } });
   }
+  lookupService ||= createLookupService();
   processWebhook ||= createWebhookProcessor({
     repo,
     service,
@@ -40,6 +42,16 @@ export function createHandler({ config = loadConfig(), repo, service, processWeb
 
   const routes = [
     { method: 'GET', re: /^\/health$/, run: async () => ({ status: 200, body: { ok: true, service: 'nodux-flow' } }) },
+    {
+      method: 'GET',
+      re: /^\/lookup\/dni\/([0-9]{8})$/,
+      run: async ({ params }) => ({ status: 200, body: await lookupService.lookupDni(params[0]) }),
+    },
+    {
+      method: 'GET',
+      re: /^\/lookup\/ruc\/([0-9]{11})$/,
+      run: async ({ params }) => ({ status: 200, body: await lookupService.lookupRuc(params[0]) }),
+    },
     {
       method: 'GET',
       re: /^\/sedes\/([^/]+)\/stock$/,

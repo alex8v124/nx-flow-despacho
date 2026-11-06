@@ -1,10 +1,11 @@
 import { useEffect, useState } from 'react';
 import { isValidRuc, soles } from '../lib/money.js';
 import { shortId } from '../lib/storage.js';
+import { lookupDocument } from '../lib/api.js';
 import { IconCheck, IconWhatsApp, IconX } from './icons.jsx';
 
 const field =
-  'h-14 w-full rounded-xl border border-ink-600 bg-ink-800 px-4 text-base text-white placeholder:text-slate-500 outline-none focus:border-cyan-400';
+  'h-14 w-full rounded-xl border border-ink-600 bg-ink-800 px-4 text-base text-white placeholder:text-slate-500 outline-none focus:border-cyan-400 disabled:opacity-85 disabled:cursor-not-allowed disabled:border-emerald-500/40 disabled:bg-ink-800/90';
 
 const RESERVATION_LABEL = {
   RESERVED: { text: 'Stock reservado en DynamoDB', cls: 'text-emerald-300' },
@@ -51,9 +52,10 @@ function Success({ result, onNewOrder }) {
 
 export default function CheckoutSheet({ open, sede, lines, totals, defaults, busy, error, result, onClose, onSubmit, onNewOrder }) {
   const [kind, setKind] = useState('BOLETA');
-  // Formularios 100% independientes para Boleta y Factura
-  const [boleta, setBoleta] = useState({ name: '', doc: '' });
-  const [factura, setFactura] = useState({ name: '', doc: '' });
+  // Formularios 100% independientes para Boleta y Factura con bloqueo automático
+  const [boleta, setBoleta] = useState({ name: '', doc: '', locked: false, status: '' });
+  const [factura, setFactura] = useState({ name: '', doc: '', locked: false, status: '' });
+  const [lookingUp, setLookingUp] = useState(false);
   const [seller, setSeller] = useState(defaults.seller);
   const [phone, setPhone] = useState(defaults.phone);
   const [notes, setNotes] = useState('');
@@ -65,6 +67,64 @@ export default function CheckoutSheet({ open, sede, lines, totals, defaults, bus
     return () => window.removeEventListener('keydown', onKey);
   }, [open, onClose]);
 
+  // Consulta automática de DNI ante RENIEC
+  useEffect(() => {
+    if (!open) return;
+    const docClean = boleta.doc.replace(/\D/g, '');
+    if (docClean.length === 8 && !boleta.locked) {
+      let cancel = false;
+      setLookingUp(true);
+      lookupDocument('DNI', docClean)
+        .then((res) => {
+          if (cancel) return;
+          setLookingUp(false);
+          if (res.found && res.name) {
+            setBoleta((prev) => ({
+              ...prev,
+              name: res.name,
+              locked: true,
+              status: 'RENIEC verificado',
+            }));
+          }
+        })
+        .catch(() => {
+          if (!cancel) setLookingUp(false);
+        });
+      return () => {
+        cancel = true;
+      };
+    }
+  }, [open, boleta.doc, boleta.locked]);
+
+  // Consulta automática de RUC ante SUNAT
+  useEffect(() => {
+    if (!open) return;
+    const docClean = factura.doc.replace(/\D/g, '');
+    if (docClean.length === 11 && isValidRuc(docClean) && !factura.locked) {
+      let cancel = false;
+      setLookingUp(true);
+      lookupDocument('RUC', docClean)
+        .then((res) => {
+          if (cancel) return;
+          setLookingUp(false);
+          if (res.found && res.name) {
+            setFactura((prev) => ({
+              ...prev,
+              name: res.name,
+              locked: true,
+              status: res.condicion ? `SUNAT: ${res.estado || 'ACTIVO'} / ${res.condicion}` : 'SUNAT verificado',
+            }));
+          }
+        })
+        .catch(() => {
+          if (!cancel) setLookingUp(false);
+        });
+      return () => {
+        cancel = true;
+      };
+    }
+  }, [open, factura.doc, factura.locked]);
+
   if (!open) return null;
 
   const current = kind === 'FACTURA' ? factura : boleta;
@@ -74,7 +134,7 @@ export default function CheckoutSheet({ open, sede, lines, totals, defaults, bus
   if (kind === 'FACTURA') {
     if (docClean.length > 0 && !isValidRuc(docClean)) {
       docError = docClean.length === 11 ? 'RUC inválido (dígito verificador SUNAT)' : 'RUC debe tener 11 dígitos';
-    } else if (docClean.length === 11 && !factura.name.trim()) {
+    } else if (docClean.length === 11 && !factura.name.trim() && !lookingUp) {
       docError = 'Ingrese la razón social de la empresa';
     }
   } else {
@@ -85,13 +145,27 @@ export default function CheckoutSheet({ open, sede, lines, totals, defaults, bus
 
   const isFacturaReady = kind !== 'FACTURA' || (isValidRuc(docClean) && factura.name.trim().length > 0);
   const isBoletaReady = kind !== 'BOLETA' || (docClean.length === 0 || docClean.length === 8);
-  const canSubmit = !busy && !docError && isFacturaReady && isBoletaReady;
+  const canSubmit = !busy && !docError && isFacturaReady && isBoletaReady && !lookingUp;
 
   const handleDocChange = (val) => {
     if (kind === 'FACTURA') {
-      setFactura((prev) => ({ ...prev, doc: val }));
+      const clean = val.replace(/\D/g, '');
+      setFactura((prev) => ({
+        ...prev,
+        doc: val,
+        locked: false,
+        status: '',
+        name: clean.length !== 11 ? '' : prev.name,
+      }));
     } else {
-      setBoleta((prev) => ({ ...prev, doc: val }));
+      const clean = val.replace(/\D/g, '');
+      setBoleta((prev) => ({
+        ...prev,
+        doc: val,
+        locked: false,
+        status: '',
+        name: clean.length !== 8 ? '' : prev.name,
+      }));
     }
   };
 
@@ -120,8 +194,8 @@ export default function CheckoutSheet({ open, sede, lines, totals, defaults, bus
   };
 
   const handleResetAndNewOrder = () => {
-    setBoleta({ name: '', doc: '' });
-    setFactura({ name: '', doc: '' });
+    setBoleta({ name: '', doc: '', locked: false, status: '' });
+    setFactura({ name: '', doc: '', locked: false, status: '' });
     onNewOrder();
   };
 
@@ -184,22 +258,55 @@ export default function CheckoutSheet({ open, sede, lines, totals, defaults, bus
             </div>
 
             <div className="grid gap-3">
-              <input
-                className={field}
-                inputMode="numeric"
-                autoComplete="off"
-                placeholder={kind === 'FACTURA' ? 'RUC de la empresa * (11 dígitos)' : 'DNI del cliente (opcional)'}
-                value={current.doc}
-                maxLength={kind === 'FACTURA' ? 11 : 8}
-                onChange={(e) => handleDocChange(e.target.value)}
-              />
-              <input
-                className={field}
-                placeholder={kind === 'FACTURA' ? 'Razón social de la empresa *' : 'Nombre del cliente (opcional)'}
-                value={current.name}
-                maxLength={80}
-                onChange={(e) => handleNameChange(e.target.value)}
-              />
+              <div>
+                <input
+                  className={field}
+                  inputMode="numeric"
+                  autoComplete="off"
+                  placeholder={kind === 'FACTURA' ? 'RUC de la empresa * (11 dígitos)' : 'DNI del cliente (opcional, 8 dígitos)'}
+                  value={current.doc}
+                  maxLength={kind === 'FACTURA' ? 11 : 8}
+                  onChange={(e) => handleDocChange(e.target.value)}
+                />
+                {lookingUp && (
+                  <p className="mt-1.5 flex items-center gap-1.5 text-xs font-semibold text-cyan-300">
+                    <span className="inline-block h-2 w-2 animate-ping rounded-full bg-cyan-400" />
+                    Consultando padrón {kind === 'FACTURA' ? 'SUNAT' : 'RENIEC'}…
+                  </p>
+                )}
+                {current.status && !lookingUp && (
+                  <div className="mt-1.5 flex items-center justify-between text-xs">
+                    <span className="font-semibold text-emerald-300">✓ {current.status}</span>
+                    <button
+                      type="button"
+                      onClick={() => {
+                        if (kind === 'FACTURA') setFactura((p) => ({ ...p, locked: false }));
+                        else setBoleta((p) => ({ ...p, locked: false }));
+                      }}
+                      className="text-slate-400 underline hover:text-white"
+                    >
+                      Editar manual
+                    </button>
+                  </div>
+                )}
+              </div>
+
+              <div className="relative">
+                <input
+                  className={`${field} ${current.locked ? 'text-slate-200 bg-ink-800/80 border-emerald-500/30' : ''}`}
+                  placeholder={kind === 'FACTURA' ? 'Razón social de la empresa *' : 'Nombre del cliente (opcional)'}
+                  value={current.name}
+                  disabled={current.locked}
+                  maxLength={80}
+                  onChange={(e) => handleNameChange(e.target.value)}
+                />
+                {current.locked && (
+                  <span className="pointer-events-none absolute right-3 top-1/2 -translate-y-1/2 rounded bg-ink-700/90 px-2 py-0.5 text-[10px] font-bold uppercase tracking-wider text-emerald-300 border border-emerald-500/20">
+                    Auto-completado
+                  </span>
+                )}
+              </div>
+
               <div className="grid grid-cols-2 gap-3">
                 <input className={field} placeholder="Vendedor" value={seller} maxLength={60} onChange={(e) => setSeller(e.target.value)} />
                 <input

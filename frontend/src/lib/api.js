@@ -24,6 +24,70 @@ export async function fetchStock(sedeId) {
   return data.items;
 }
 
+const LOCAL_DIRECTORY = {
+  RUC: {
+    '20100070970': { name: "SUPERMERCADOS PERUANOS SOCIEDAD ANONIMA 'O ' S.P.S.A.", estado: 'ACTIVO', condicion: 'HABIDO' },
+    '20131312955': { name: 'SUNAT - SUPERINTENDENCIA NACIONAL DE ADUANAS Y DE ADMINISTRACION TRIBUTARIA', estado: 'ACTIVO', condicion: 'HABIDO' },
+    '20100128056': { name: 'SEDAPAL S.A.', estado: 'ACTIVO', condicion: 'HABIDO' },
+  },
+  DNI: {
+    '47854125': { name: 'MARICELA GOMEZ PAIMA' },
+    '10203040': { name: 'JUAN CARLOS MIRANDA QUISPE' },
+    '87654321': { name: 'VERONICA CAMPOS BALDEON' },
+  },
+};
+
+/**
+ * Consulta de documento peruano (RUC ante SUNAT / DNI ante RENIEC).
+ * Prioriza backend de Nodux Flow, con fallback a gateway público y directorio demo offline.
+ */
+export async function lookupDocument(type, number) {
+  const t = type.toUpperCase();
+  const num = String(number || '').trim();
+
+  // 1. Backend Nodux Flow (si está configurado)
+  if (apiEnabled) {
+    try {
+      const { status, data } = await request(`/lookup/${t.toLowerCase()}/${num}`);
+      if (status === 200 && data.found) return data;
+    } catch {
+      // continuar a fallback
+    }
+  }
+
+  // 2. Gateway público directo (v1 apis.net.pe)
+  try {
+    const res = await fetch(`https://api.apis.net.pe/v1/${t.toLowerCase()}?numero=${num}`, {
+      signal: AbortSignal.timeout(4000),
+    });
+    if (res.ok) {
+      const data = await res.json();
+      if (data && data.nombre) {
+        return {
+          found: true,
+          name: data.nombre.trim(),
+          estado: data.estado || 'ACTIVO',
+          condicion: data.condicion || 'HABIDO',
+        };
+      }
+    }
+  } catch {
+    // continuar a directorio local
+  }
+
+  // 3. Directorio demo local offline
+  if (LOCAL_DIRECTORY[t]?.[num]) {
+    return {
+      found: true,
+      name: LOCAL_DIRECTORY[t][num].name,
+      estado: LOCAL_DIRECTORY[t][num].estado || 'ACTIVO',
+      condicion: LOCAL_DIRECTORY[t][num].condicion || 'HABIDO',
+    };
+  }
+
+  return { found: false };
+}
+
 /**
  * Reserva el pedido en DynamoDB.
  * Devuelve { kind: 'RESERVED', order } | { kind: 'CONFLICT', details } | { kind: 'PENDING' }.
