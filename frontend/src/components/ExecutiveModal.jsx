@@ -3,7 +3,7 @@ import { soles } from '../lib/money.js';
 import { store } from '../lib/storage.js';
 import { IconCheck, IconX } from './icons.jsx';
 
-export default function ExecutiveModal({ open, onClose }) {
+export default function ExecutiveModal({ open, onClose, onResetStock }) {
   const [copied, setCopied] = useState(false);
 
   const unmetDemand = useMemo(() => {
@@ -182,7 +182,15 @@ export default function ExecutiveModal({ open, onClose }) {
           </div>
         </div>
 
-        <div className="mt-4 flex justify-end">
+        <div className="mt-4 flex flex-wrap items-center justify-between gap-2 border-t border-ink-800 pt-3">
+          <button
+            type="button"
+            onClick={onResetStock}
+            className="flex items-center gap-1.5 rounded-xl border border-rose-500/40 bg-rose-500/10 px-3.5 py-2 text-xs font-bold text-rose-300 hover:bg-rose-500/20 active:scale-95 transition-all"
+            title="Restaura todo el stock a sus valores de fábrica y limpia la fuga de ventas registrada"
+          >
+            🔄 Restablecer Inventario Demo
+          </button>
           <button
             type="button"
             onClick={onClose}

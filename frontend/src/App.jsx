@@ -46,12 +46,22 @@ export default function App() {
   const [checkoutResult, setCheckoutResult] = useState(null);
   const [pendingSync, setPendingSync] = useState(() => outboxSize());
   const [serverStock, setServerStock] = useState(null);
+  // Control dinámico de inventario: resta compras reales para provocar quiebres de stock visibles
+  const [stockDeltas, setStockDeltas] = useState(() => store.get('nf.stock_deltas', {}));
+  const [toast, setToast] = useState(null);
 
   const searchInputRef = useRef(null);
 
   const currentSede = useMemo(() => {
     return catalogData.sedes.find((s) => s.id === sedeId) || catalogData.sedes[0];
   }, [sedeId]);
+
+  // Auto-ocultar toast de alerta tras 3.5 segundos
+  useEffect(() => {
+    if (!toast) return;
+    const timer = setTimeout(() => setToast(null), 3500);
+    return () => clearTimeout(timer);
+  }, [toast]);
 
   // Persistir tarifa seleccionada
   useEffect(() => {
@@ -114,15 +124,45 @@ export default function App() {
     [tarifaKey],
   );
 
-  // Cantidad y stock por producto
+  // Cantidad y stock por producto considerando los despachos efectuados
   const getProductStock = useCallback(
     (product) => {
-      if (serverStock && serverStock.has(product.sku)) {
-        return serverStock.get(product.sku);
-      }
-      return product.stock[sedeId] ?? 0;
+      const base = serverStock && serverStock.has(product.sku)
+        ? serverStock.get(product.sku)
+        : (product.stock[sedeId] ?? 0);
+      const delta = stockDeltas[`${sedeId}#${product.sku}`] || 0;
+      return Math.max(0, base - delta);
     },
-    [serverStock, sedeId],
+    [serverStock, sedeId, stockDeltas],
+  );
+
+  // Registrar demanda insatisfecha por quiebre de stock (Moat para el Gerente Comercial)
+  const handleMissedDemand = useCallback(
+    (product, qty = 1) => {
+      const priceCents = getProductPriceCents(product);
+      const missedItem = {
+        sku: product.sku,
+        name: product.name,
+        category: product.category,
+        priceCents,
+        requestedQty: qty,
+        sedeId,
+        timestamp: new Date().toISOString(),
+      };
+      const unmetHistory = store.get('nf.unmet_demand', []);
+      unmetHistory.push(missedItem);
+      store.set('nf.unmet_demand', unmetHistory.slice(-100));
+
+      // Envío asíncrono a DynamoDB
+      sendMissedDemandBeacon(sedeId, missedItem);
+
+      // Feedback visual inmediato en la terminal del vendedor
+      setToast({
+        id: Date.now(),
+        message: `⚠️ Fuga de venta registrada: S/ ${(priceCents / 100).toFixed(2)} por stock agotado en "${product.name}". Contabilizado en Panel Gerencial.`,
+      });
+    },
+    [getProductPriceCents, sedeId],
   );
 
   const handleQtyChange = useCallback(
@@ -131,24 +171,10 @@ export default function App() {
         const product = catalogData.products.find((p) => p.sku === sku);
         const max = product ? getProductStock(product) : 9999;
 
-        // Registrar demanda insatisfecha (Moat para el Gerente Comercial)
+        // Registrar demanda insatisfecha si se supera el stock disponible
         if (product && (nextQty > max || max === 0)) {
           const missedQty = max === 0 ? 1 : nextQty - max;
-          const missedItem = {
-            sku: product.sku,
-            name: product.name,
-            category: product.category,
-            priceCents: getProductPriceCents(product),
-            requestedQty: missedQty,
-            sedeId,
-            timestamp: new Date().toISOString(),
-          };
-          const unmetHistory = store.get('nf.unmet_demand', []);
-          unmetHistory.push(missedItem);
-          store.set('nf.unmet_demand', unmetHistory.slice(-100));
-
-          // Envío asíncrono a la base de datos central en AWS DynamoDB
-          sendMissedDemandBeacon(sedeId, missedItem);
+          handleMissedDemand(product, missedQty);
         }
 
         const clamped = Math.max(0, Math.min(nextQty, max));
@@ -171,8 +197,19 @@ export default function App() {
         return updated;
       });
     },
-    [getProductStock, startedAt, getProductPriceCents, sedeId],
+    [getProductStock, startedAt, handleMissedDemand],
   );
+
+  // Restablecer inventario de demostración a valores de fábrica
+  const handleResetStockDemo = useCallback(() => {
+    setStockDeltas({});
+    store.remove('nf.stock_deltas');
+    store.remove('nf.unmet_demand');
+    setToast({
+      id: Date.now(),
+      message: '✓ Inventario restablecido al 100% y fuga de ventas reiniciada para demostración.',
+    });
+  }, []);
 
   const resetCart = () => {
     setQuantities({});
@@ -284,6 +321,17 @@ export default function App() {
 
     // Abrir WhatsApp en pestaña/app
     window.open(url, '_blank', 'noopener,noreferrer');
+
+    // Descontar stock vendido en la sesión activa para reflejar quiebres de inventario reales
+    setStockDeltas((prev) => {
+      const next = { ...prev };
+      for (const line of cartLines) {
+        const key = `${sedeId}#${line.sku}`;
+        next[key] = (next[key] || 0) + line.qty;
+      }
+      store.set('nf.stock_deltas', next);
+      return next;
+    });
 
     setBusy(false);
     setCheckoutResult({
@@ -437,6 +485,23 @@ export default function App() {
         </div>
       </header>
 
+      {/* Toast de Demanda Insatisfecha / Alertas para el Vendedor */}
+      {toast && (
+        <aside aria-label="Notificaciones" className="sticky top-[108px] z-30 mx-auto w-full max-w-2xl px-3 pt-1">
+          <div className="flex items-center justify-between rounded-xl border border-amber-500/50 bg-ink-900/95 px-3 py-2 text-xs font-semibold text-amber-300 shadow-xl border-l-4 border-l-amber-400">
+            <span className="leading-tight">{toast.message}</span>
+            <button
+              type="button"
+              onClick={() => setToast(null)}
+              className="ml-2 text-slate-400 hover:text-white px-1"
+              aria-label="Cerrar notificación"
+            >
+              ✕
+            </button>
+          </div>
+        </aside>
+      )}
+
       {/* Catálogo de Productos */}
       <main className="mx-auto w-full max-w-2xl flex-1 px-3 pb-32 pt-3">
         <div className="mb-2 flex items-center justify-between text-xs text-slate-400">
@@ -480,6 +545,7 @@ export default function App() {
                 stock={getProductStock(p)}
                 priceCents={getProductPriceCents(p)}
                 onChange={handleQtyChange}
+                onMissedDemand={handleMissedDemand}
               />
             ))}
           </ul>
@@ -514,7 +580,7 @@ export default function App() {
       />
 
       {/* Modal de Control Gerencial B2B (Moat Operativo y Exportación Contable) */}
-      <ExecutiveModal open={execOpen} onClose={() => setExecOpen(false)} />
+      <ExecutiveModal open={execOpen} onClose={() => setExecOpen(false)} onResetStock={handleResetStockDemo} />
     </div>
   );
 }

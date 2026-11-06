@@ -1,8 +1,8 @@
 // Service Worker mínimo: la terminal sigue abriendo y cotizando sin señal en el depósito.
 //  - Navegación: network-first con fallback al index cacheado.
 //  - Assets con hash (/assets/*): cache-first (inmutables).
-//  - Llamadas al API (otro origen): nunca se cachean.
-const CACHE = 'nodux-flow-v2';
+//  - Llamadas al API o lookup: nunca se cachean en el SW, van directo a la red.
+const CACHE = 'nodux-flow-v3';
 const SHELL = ['/', '/index.html', '/manifest.webmanifest', '/logo-64.webp', '/logo-192.png', '/icon.svg'];
 
 self.addEventListener('install', (event) => {
@@ -21,7 +21,16 @@ self.addEventListener('activate', (event) => {
 self.addEventListener('fetch', (event) => {
   const req = event.request;
   const url = new URL(req.url);
-  if (req.method !== 'GET' || url.origin !== self.location.origin) return;
+
+  // Ignorar métodos no-GET, llamadas a otros orígenes o rutas dinámicas de API / padrón SUNAT
+  if (
+    req.method !== 'GET' ||
+    url.origin !== self.location.origin ||
+    url.pathname.startsWith('/lookup/') ||
+    url.pathname.startsWith('/api/')
+  ) {
+    return;
+  }
 
   if (req.mode === 'navigate') {
     event.respondWith(

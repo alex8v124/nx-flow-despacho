@@ -9,7 +9,7 @@ function StockBadge({ stock }) {
 }
 
 /** Fila de producto: toda la ergonomía pensada para el pulgar del vendedor de mostrador. */
-function ProductRow({ product, qty, stock, priceCents, onChange }) {
+function ProductRow({ product, qty, stock, priceCents, onChange, onMissedDemand }) {
   const { sku, name, category, unit } = product;
   const max = Math.max(0, stock);
   const soldOut = max === 0;
@@ -34,15 +34,27 @@ function ProductRow({ product, qty, stock, priceCents, onChange }) {
       </div>
 
       {qty === 0 ? (
-        <button
-          type="button"
-          disabled={soldOut}
-          onClick={() => onChange(sku, 1)}
-          aria-label={`Agregar ${name}`}
-          className="grid h-16 w-16 shrink-0 place-items-center rounded-2xl border-2 border-cyan-400/70 text-cyan-300 active:scale-95 active:bg-cyan-400/20 disabled:border-ink-600 disabled:text-ink-500"
-        >
-          <IconPlus width={28} height={28} />
-        </button>
+        soldOut ? (
+          <button
+            type="button"
+            onClick={() => onMissedDemand?.(product, 1)}
+            aria-label={`Registrar demanda de ${name}`}
+            className="flex flex-col items-center justify-center h-16 w-16 shrink-0 rounded-2xl border border-rose-500/50 bg-rose-500/10 text-rose-300 active:scale-95 active:bg-rose-500/20 transition-all"
+            title="Producto agotado. Toca para registrar venta perdida."
+          >
+            <span className="text-base">⚠️</span>
+            <span className="text-[10px] font-bold leading-tight mt-0.5">Agotado</span>
+          </button>
+        ) : (
+          <button
+            type="button"
+            onClick={() => onChange(sku, 1)}
+            aria-label={`Agregar ${name}`}
+            className="grid h-16 w-16 shrink-0 place-items-center rounded-2xl border-2 border-cyan-400/70 text-cyan-300 active:scale-95 active:bg-cyan-400/20 transition-all"
+          >
+            <IconPlus width={28} height={28} />
+          </button>
+        )
       ) : (
         <div className="flex shrink-0 items-center gap-1">
           <button
@@ -66,10 +78,20 @@ function ProductRow({ product, qty, stock, priceCents, onChange }) {
           />
           <button
             type="button"
-            disabled={qty >= max}
-            onClick={() => onChange(sku, qty + 1)}
+            onClick={() => {
+              if (qty >= max) {
+                onMissedDemand?.(product, 1);
+              } else {
+                onChange(sku, qty + 1);
+              }
+            }}
             aria-label={`Agregar uno de ${name}`}
-            className="grid h-16 w-14 place-items-center rounded-2xl bg-cyan-400 text-ink-950 active:scale-95 active:bg-cyan-300 disabled:bg-ink-600 disabled:text-ink-500"
+            className={`grid h-16 w-14 place-items-center rounded-2xl active:scale-95 transition-all ${
+              qty >= max
+                ? 'border border-rose-500/50 bg-rose-500/15 text-rose-300'
+                : 'bg-cyan-400 text-ink-950 active:bg-cyan-300'
+            }`}
+            title={qty >= max ? 'Stock máximo alcanzado. Toca para registrar intento sin stock.' : undefined}
           >
             <IconPlus width={26} height={26} />
           </button>
