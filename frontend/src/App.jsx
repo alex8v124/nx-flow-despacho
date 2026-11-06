@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import catalogData from '../../shared/catalog.json';
-import { fetchStock, reserveOrder, apiEnabled, flushOutbox, outboxSize } from './lib/api.js';
+import { fetchStock, reserveOrder, apiEnabled, flushOutbox, outboxSize, sendMissedDemandBeacon } from './lib/api.js';
 import { buildIndex, search } from './lib/search.js';
 import { splitIgv } from './lib/money.js';
 import { store, uuid } from './lib/storage.js';
@@ -134,8 +134,7 @@ export default function App() {
         // Registrar demanda insatisfecha (Moat para el Gerente Comercial)
         if (product && (nextQty > max || max === 0)) {
           const missedQty = max === 0 ? 1 : nextQty - max;
-          const unmetHistory = store.get('nf.unmet_demand', []);
-          unmetHistory.push({
+          const missedItem = {
             sku: product.sku,
             name: product.name,
             category: product.category,
@@ -143,8 +142,13 @@ export default function App() {
             requestedQty: missedQty,
             sedeId,
             timestamp: new Date().toISOString(),
-          });
+          };
+          const unmetHistory = store.get('nf.unmet_demand', []);
+          unmetHistory.push(missedItem);
           store.set('nf.unmet_demand', unmetHistory.slice(-100));
+
+          // Envío asíncrono a la base de datos central en AWS DynamoDB
+          sendMissedDemandBeacon(sedeId, missedItem);
         }
 
         const clamped = Math.max(0, Math.min(nextQty, max));

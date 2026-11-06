@@ -130,5 +130,15 @@ export function createService({ repo, config, integrations = {}, now = () => new
       assertOrderId(orderId);
       return repo.patchOrder(sedeId, orderId, 'invoice', invoice);
     },
+
+    async recordMissedDemand(sedeId, data) {
+      assertSede(sedeId);
+      return repo.recordMissedDemand(sedeId, data);
+    },
+
+    async getMissedDemand(sedeId) {
+      assertSede(sedeId);
+      return repo.listMissedDemand(sedeId);
+    },
   };
 }

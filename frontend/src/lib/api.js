@@ -24,6 +24,20 @@ export async function fetchStock(sedeId) {
   return data.items;
 }
 
+/** Envía telemetría de demanda insatisfecha a la BD central en AWS en segundo plano */
+export async function sendMissedDemandBeacon(sedeId, item) {
+  try {
+    if (apiEnabled) {
+      await request(`/sedes/${encodeURIComponent(sedeId)}/metrics/missed-demand`, {
+        method: 'POST',
+        body: item,
+      });
+    }
+  } catch {
+    // No bloquea la UI ni interrumpe al vendedor si está offline
+  }
+}
+
 const LOCAL_DIRECTORY = {
   RUC: {
     '20524854521': { name: 'VMWARE SISTEMA INTEGRAL DE SEGURIDAD S.A.C.-VMWARESIS S.A.C.', estado: 'ACTIVO', condicion: 'HABIDO' },

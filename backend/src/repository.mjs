@@ -285,5 +285,37 @@ export function createRepository({ doc, tableName, now = () => new Date() }) {
         throw err;
       }
     },
+
+    /** Contador atómico en DynamoDB para fuga de ventas por quiebre de stock */
+    async recordMissedDemand(sedeId, { sku, name, priceCents, requestedQty = 1 }) {
+      const lostCents = (priceCents || 0) * requestedQty;
+      await doc.send(
+        new UpdateCommand({
+          TableName: tableName,
+          Key: { PK: keys.sede(sedeId), SK: `MISSED#${sku}` },
+          UpdateExpression: 'ADD #lost :lost, #count :qty SET #name = :name, #updatedAt = :ts',
+          ExpressionAttributeNames: { '#lost': 'totalLostCents', '#count': 'missedCount', '#name': 'name', '#updatedAt': 'updatedAt' },
+          ExpressionAttributeValues: { ':lost': lostCents, ':qty': requestedQty, ':name': name || sku, ':ts': now().toISOString() },
+        })
+      );
+    },
+
+    /** Consulta agregada de productos con quiebre de stock para el Gerente Comercial */
+    async listMissedDemand(sedeId) {
+      const res = await doc.send(
+        new QueryCommand({
+          TableName: tableName,
+          KeyConditionExpression: 'PK = :pk AND begins_with(SK, :sk)',
+          ExpressionAttributeValues: { ':pk': keys.sede(sedeId), ':sk': 'MISSED#' },
+        })
+      );
+      return (res.Items || []).map((item) => ({
+        sku: item.SK.replace('MISSED#', ''),
+        name: item.name,
+        missedCount: item.missedCount || 0,
+        totalLostCents: item.totalLostCents || 0,
+        updatedAt: item.updatedAt,
+      })).sort((a, b) => b.totalLostCents - a.totalLostCents);
+    },
   };
 }

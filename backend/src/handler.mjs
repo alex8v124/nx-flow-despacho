@@ -80,6 +80,22 @@ export function createHandler({ config = loadConfig(), repo, service, processWeb
     },
     {
       method: 'POST',
+      re: /^\/sedes\/([^/]+)\/metrics\/missed-demand$/,
+      run: async ({ params, body }) => {
+        await service.recordMissedDemand(params[0], body);
+        return { status: 200, body: { ok: true } };
+      },
+    },
+    {
+      method: 'GET',
+      re: /^\/sedes\/([^/]+)\/metrics\/missed-demand$/,
+      run: async ({ params }) => ({
+        status: 200,
+        body: { items: await service.getMissedDemand(params[0]) },
+      }),
+    },
+    {
+      method: 'POST',
       re: /^\/webhooks\/([a-z]+)$/,
       raw: true,
       run: async ({ params, rawBody, headers }) => ({
