@@ -67,63 +67,60 @@ export default function CheckoutSheet({ open, sede, lines, totals, defaults, bus
     return () => window.removeEventListener('keydown', onKey);
   }, [open, onClose]);
 
+  const executeLookup = async (type, number) => {
+    const clean = number.replace(/\D/g, '');
+    if (!clean) return;
+    setLookingUp(true);
+    try {
+      const res = await lookupDocument(type === 'FACTURA' ? 'RUC' : 'DNI', clean);
+      if (res && res.found && res.name) {
+        if (type === 'FACTURA') {
+          setFactura((prev) => ({
+            ...prev,
+            name: res.name,
+            locked: true,
+            status: res.condicion ? `SUNAT: ${res.estado || 'ACTIVO'} / ${res.condicion}` : 'SUNAT verificado',
+          }));
+        } else {
+          setBoleta((prev) => ({
+            ...prev,
+            name: res.name,
+            locked: true,
+            status: 'RENIEC verificado',
+          }));
+        }
+      } else {
+        const msg = type === 'FACTURA' ? 'RUC no encontrado en padrón SUNAT' : 'DNI no encontrado en padrón';
+        if (type === 'FACTURA') {
+          setFactura((prev) => ({ ...prev, locked: false, status: msg }));
+        } else {
+          setBoleta((prev) => ({ ...prev, locked: false, status: msg }));
+        }
+      }
+    } catch {
+      // fallo de red
+    } finally {
+      setLookingUp(false);
+    }
+  };
+
   // Consulta automática de DNI ante RENIEC
   useEffect(() => {
     if (!open) return;
     const docClean = boleta.doc.replace(/\D/g, '');
-    if (docClean.length === 8 && !boleta.locked) {
-      let cancel = false;
-      setLookingUp(true);
-      lookupDocument('DNI', docClean)
-        .then((res) => {
-          if (cancel) return;
-          setLookingUp(false);
-          if (res.found && res.name) {
-            setBoleta((prev) => ({
-              ...prev,
-              name: res.name,
-              locked: true,
-              status: 'RENIEC verificado',
-            }));
-          }
-        })
-        .catch(() => {
-          if (!cancel) setLookingUp(false);
-        });
-      return () => {
-        cancel = true;
-      };
+    if (docClean.length === 8 && !boleta.locked && !boleta.name) {
+      executeLookup('BOLETA', docClean);
     }
-  }, [open, boleta.doc, boleta.locked]);
+  }, [open, boleta.doc, boleta.locked, boleta.name]);
 
   // Consulta automática de RUC ante SUNAT
   useEffect(() => {
     if (!open) return;
     const docClean = factura.doc.replace(/\D/g, '');
-    if (docClean.length === 11 && isValidRuc(docClean) && !factura.locked) {
-      let cancel = false;
-      setLookingUp(true);
-      lookupDocument('RUC', docClean)
-        .then((res) => {
-          if (cancel) return;
-          setLookingUp(false);
-          if (res.found && res.name) {
-            setFactura((prev) => ({
-              ...prev,
-              name: res.name,
-              locked: true,
-              status: res.condicion ? `SUNAT: ${res.estado || 'ACTIVO'} / ${res.condicion}` : 'SUNAT verificado',
-            }));
-          }
-        })
-        .catch(() => {
-          if (!cancel) setLookingUp(false);
-        });
-      return () => {
-        cancel = true;
-      };
+    if (docClean.length === 11 && isValidRuc(docClean) && !factura.locked && !factura.name) {
+      executeLookup('FACTURA', docClean);
     }
-  }, [open, factura.doc, factura.locked]);
+  }, [open, factura.doc, factura.locked, factura.name]);
 
   if (!open) return null;
 
@@ -259,15 +256,25 @@ export default function CheckoutSheet({ open, sede, lines, totals, defaults, bus
 
             <div className="grid gap-3">
               <div>
-                <input
-                  className={field}
-                  inputMode="numeric"
-                  autoComplete="off"
-                  placeholder={kind === 'FACTURA' ? 'RUC de la empresa * (11 dígitos)' : 'DNI del cliente (opcional, 8 dígitos)'}
-                  value={current.doc}
-                  maxLength={kind === 'FACTURA' ? 11 : 8}
-                  onChange={(e) => handleDocChange(e.target.value)}
-                />
+                <div className="flex gap-2">
+                  <input
+                    className={`${field} flex-1`}
+                    inputMode="numeric"
+                    autoComplete="off"
+                    placeholder={kind === 'FACTURA' ? 'RUC de la empresa * (11 dígitos)' : 'DNI del cliente (opcional, 8 dígitos)'}
+                    value={current.doc}
+                    maxLength={kind === 'FACTURA' ? 11 : 8}
+                    onChange={(e) => handleDocChange(e.target.value)}
+                  />
+                  <button
+                    type="button"
+                    onClick={() => executeLookup(kind, current.doc)}
+                    disabled={lookingUp || !docClean}
+                    className="shrink-0 h-14 px-4 rounded-xl border border-cyan-400/40 bg-cyan-400/10 text-cyan-300 font-bold text-xs hover:bg-cyan-400/20 active:scale-95 disabled:opacity-30 disabled:pointer-events-none transition-all"
+                  >
+                    {lookingUp ? 'Buscando…' : 'Consultar'}
+                  </button>
+                </div>
                 {lookingUp && (
                   <p className="mt-1.5 flex items-center gap-1.5 text-xs font-semibold text-cyan-300">
                     <span className="inline-block h-2 w-2 animate-ping rounded-full bg-cyan-400" />
@@ -276,34 +283,51 @@ export default function CheckoutSheet({ open, sede, lines, totals, defaults, bus
                 )}
                 {current.status && !lookingUp && (
                   <div className="mt-1.5 flex items-center justify-between text-xs">
-                    <span className="font-semibold text-emerald-300">✓ {current.status}</span>
-                    <button
-                      type="button"
-                      onClick={() => {
-                        if (kind === 'FACTURA') setFactura((p) => ({ ...p, locked: false }));
-                        else setBoleta((p) => ({ ...p, locked: false }));
-                      }}
-                      className="text-slate-400 underline hover:text-white"
-                    >
-                      Editar manual
-                    </button>
+                    <span className={current.locked ? 'font-semibold text-emerald-300' : 'text-amber-300 font-medium'}>
+                      {current.locked ? '✓ ' : 'ℹ '} {current.status}
+                    </span>
+                    {current.locked && (
+                      <button
+                        type="button"
+                        onClick={() => {
+                          if (kind === 'FACTURA') setFactura((p) => ({ ...p, locked: false }));
+                          else setBoleta((p) => ({ ...p, locked: false }));
+                        }}
+                        className="text-slate-400 underline hover:text-white"
+                      >
+                        Editar manual
+                      </button>
+                    )}
                   </div>
                 )}
               </div>
 
               <div className="relative">
                 <input
-                  className={`${field} ${current.locked ? 'text-slate-200 bg-ink-800/80 border-emerald-500/30' : ''}`}
+                  className={`${field} ${current.locked ? 'text-emerald-100 bg-ink-800/90 border-emerald-500/60 cursor-not-allowed font-medium' : ''}`}
                   placeholder={kind === 'FACTURA' ? 'Razón social de la empresa *' : 'Nombre del cliente (opcional)'}
                   value={current.name}
                   disabled={current.locked}
+                  readOnly={current.locked}
                   maxLength={80}
                   onChange={(e) => handleNameChange(e.target.value)}
                 />
                 {current.locked && (
-                  <span className="pointer-events-none absolute right-3 top-1/2 -translate-y-1/2 rounded bg-ink-700/90 px-2 py-0.5 text-[10px] font-bold uppercase tracking-wider text-emerald-300 border border-emerald-500/20">
-                    Auto-completado
-                  </span>
+                  <div className="absolute right-3 top-1/2 -translate-y-1/2 flex items-center gap-2">
+                    <span className="rounded bg-emerald-500/20 px-2 py-0.5 text-[10px] font-bold uppercase tracking-wider text-emerald-300 border border-emerald-500/30">
+                      Inhabilitado
+                    </span>
+                    <button
+                      type="button"
+                      onClick={() => {
+                        if (kind === 'FACTURA') setFactura((p) => ({ ...p, locked: false }));
+                        else setBoleta((p) => ({ ...p, locked: false }));
+                      }}
+                      className="rounded bg-ink-700 px-2 py-0.5 text-[11px] font-semibold text-slate-300 hover:text-white hover:bg-ink-600"
+                    >
+                      Editar
+                    </button>
+                  </div>
                 )}
               </div>
 

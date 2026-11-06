@@ -45,8 +45,22 @@ export async function lookupDocument(type, number) {
   const t = type.toUpperCase();
   const num = String(number || '').trim();
 
-  // 1. Backend Nodux Flow (si está configurado)
-  if (apiEnabled) {
+  // 1. Probar ruta relativa del servidor /lookup/... (manejada por Vite en dev/preview y CloudFront en prod)
+  try {
+    const res = await fetch(`/lookup/${t.toLowerCase()}/${num}`, {
+      headers: { 'Accept': 'application/json' },
+      signal: AbortSignal.timeout(6000),
+    });
+    if (res.ok) {
+      const data = await res.json();
+      if (data && data.found) return data;
+    }
+  } catch {
+    // continuar al siguiente método
+  }
+
+  // 2. Si hay backend API_URL explícita (p. ej. en pruebas locales contra Node backend)
+  if (API_URL) {
     try {
       const { status, data } = await request(`/lookup/${t.toLowerCase()}/${num}`);
       if (status === 200 && data.found) return data;
@@ -55,27 +69,7 @@ export async function lookupDocument(type, number) {
     }
   }
 
-  // 2. Gateway público directo (v1 apis.net.pe)
-  try {
-    const res = await fetch(`https://api.apis.net.pe/v1/${t.toLowerCase()}?numero=${num}`, {
-      signal: AbortSignal.timeout(4000),
-    });
-    if (res.ok) {
-      const data = await res.json();
-      if (data && data.nombre) {
-        return {
-          found: true,
-          name: data.nombre.trim(),
-          estado: data.estado || 'ACTIVO',
-          condicion: data.condicion || 'HABIDO',
-        };
-      }
-    }
-  } catch {
-    // continuar a directorio local
-  }
-
-  // 3. Directorio demo local offline
+  // 3. Directorio demo local offline (garantía de que siempre resuelve para pruebas)
   if (LOCAL_DIRECTORY[t]?.[num]) {
     return {
       found: true,
