@@ -311,7 +311,7 @@ export default function App() {
     setSheetOpen(true);
   };
 
-  const handleCheckoutSubmit = async ({ customer, seller, phone, notes }) => {
+  const handleCheckoutSubmit = async ({ customer, seller, phone, notes, condicionPago }) => {
     setBusy(true);
     setCheckoutError(null);
 
@@ -359,6 +359,7 @@ export default function App() {
       lines: cartLines,
       totals,
       reservation,
+      condicionPago,
     });
     const url = buildWhatsAppUrl(phone || currentSede.whatsapp, text);
 
@@ -370,6 +371,7 @@ export default function App() {
       customer,
       seller: seller || 'Mostrador',
       tarifa: TARIFAS[tarifaKey]?.label || 'Mostrador',
+      condicionPago: condicionPago || 'Contado / Transf.',
       lines: cartLines,
       totals,
       reservation,
@@ -617,6 +619,7 @@ export default function App() {
                 priceCents={getProductPriceCents(p)}
                 onChange={handleQtyChange}
                 onMissedDemand={handleMissedDemand}
+                currentSedeId={sedeId}
               />
             ))}
           </ul>

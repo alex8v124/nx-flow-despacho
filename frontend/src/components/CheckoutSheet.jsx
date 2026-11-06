@@ -77,6 +77,7 @@ export default function CheckoutSheet({
   // Formularios 100% independientes para Boleta y Factura con bloqueo automático
   const [boleta, setBoleta] = useState({ name: '', doc: '', locked: false, status: '' });
   const [factura, setFactura] = useState({ name: '', doc: '', locked: false, status: '' });
+  const [condicionPago, setCondicionPago] = useState('CONTADO');
   const [lookingUp, setLookingUp] = useState(false);
   const [seller, setSeller] = useState(defaults.seller);
   const [phone, setPhone] = useState(defaults.phone);
@@ -209,7 +210,16 @@ export default function CheckoutSheet({
             ? { name: boleta.name.trim() }
             : undefined;
 
-    onSubmit({ customer, seller: seller.trim(), phone: phone.trim(), notes: notes.trim() });
+    const pagoLabel =
+      condicionPago === 'CREDITO_30' ? 'Crédito 30 días' : condicionPago === 'CREDITO_15' ? 'Crédito 15 días' : 'Contado / Transf.';
+
+    onSubmit({
+      customer,
+      seller: seller.trim(),
+      phone: phone.trim(),
+      notes: notes.trim(),
+      condicionPago: pagoLabel,
+    });
   };
 
   const handleResetAndNewOrder = () => {
@@ -363,6 +373,34 @@ export default function CheckoutSheet({
                   onChange={(e) => setPhone(e.target.value)}
                 />
               </div>
+
+              {/* Condición de Pago B2B */}
+              <div>
+                <span className="mb-1 block text-[11px] font-bold uppercase tracking-wider text-slate-400">
+                  Condición de Pago:
+                </span>
+                <div className="grid grid-cols-3 gap-1.5 rounded-xl bg-ink-800 p-1 text-xs font-semibold">
+                  {[
+                    { key: 'CONTADO', label: 'Contado' },
+                    { key: 'CREDITO_15', label: 'Crédito 15d' },
+                    { key: 'CREDITO_30', label: 'Crédito 30d' },
+                  ].map((cp) => (
+                    <button
+                      key={cp.key}
+                      type="button"
+                      onClick={() => setCondicionPago(cp.key)}
+                      className={`h-9 rounded-lg transition-all ${
+                        condicionPago === cp.key
+                          ? 'bg-cyan-400 text-ink-950 font-bold shadow-sm'
+                          : 'text-slate-400 hover:text-white'
+                      }`}
+                    >
+                      {cp.label}
+                    </button>
+                  ))}
+                </div>
+              </div>
+
               <input className={field} placeholder="Nota de despacho (opcional)" value={notes} maxLength={280} onChange={(e) => setNotes(e.target.value)} />
             </div>
 

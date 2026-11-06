@@ -12,12 +12,13 @@ const dateFmt = new Intl.DateTimeFormat('es-PE', {
   hour12: false,
 });
 
-export function buildWhatsAppText({ orderId, sede, seller, customer, notes, lines, totals, reservation }) {
+export function buildWhatsAppText({ orderId, sede, seller, customer, notes, lines, totals, reservation, condicionPago }) {
   const out = [];
   out.push(`*PEDIDO ${shortId(orderId)}*`);
   out.push(`Sede: ${sede.name}`);
   out.push(`Fecha: ${dateFmt.format(new Date())}`);
   if (seller) out.push(`Vendedor: ${seller}`);
+  if (condicionPago) out.push(`Condición: *${condicionPago}*`);
   if (customer?.name) out.push(`Cliente: ${customer.name}`);
   if (customer?.docType && customer?.docNumber) out.push(`${customer.docType}: ${customer.docNumber}`);
   out.push('');

@@ -9,10 +9,18 @@ function StockBadge({ stock }) {
 }
 
 /** Fila de producto: toda la ergonomía pensada para el pulgar del vendedor de mostrador. */
-function ProductRow({ product, qty, stock, priceCents, onChange, onMissedDemand }) {
+function ProductRow({ product, qty, stock, priceCents, onChange, onMissedDemand, currentSedeId }) {
   const { sku, name, category, unit } = product;
   const max = Math.max(0, stock);
   const soldOut = max === 0;
+
+  // Consulta de stock en otras sedes para evitar fuga de ventas (transferencia interna)
+  const otherSedes = Object.entries(product.stock || {})
+    .filter(([sid, sQty]) => sid !== currentSedeId && sQty > 0)
+    .map(([sid, sQty]) => {
+      const sName = sid === 'ate' ? 'Ate' : sid === 'collique' ? 'Collique' : sid === 'surquillo' ? 'Surquillo' : sid;
+      return `${sName}: ${sQty}`;
+    });
 
   return (
     <li
@@ -30,6 +38,11 @@ function ProductRow({ product, qty, stock, priceCents, onChange, onMissedDemand 
           <span className="text-base font-bold tabular-nums text-white">{soles(priceCents)}</span>
           <span className="text-xs text-slate-500">/ {unit}</span>
           <StockBadge stock={stock} />
+          {soldOut && otherSedes.length > 0 && (
+            <span className="rounded bg-cyan-500/15 px-2 py-0.5 text-[11px] font-bold text-cyan-300 border border-cyan-500/25">
+              💡 Hay en: {otherSedes.join(' · ')}
+            </span>
+          )}
         </div>
       </div>
 
