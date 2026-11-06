@@ -38,6 +38,46 @@ export async function sendMissedDemandBeacon(sedeId, item) {
   }
 }
 
+/** Envía telemetría silenciosa de búsquedas sin resultado (Demanda Oculta para compras/importación) */
+export async function sendZeroSearchBeacon(sedeId, term) {
+  try {
+    if (apiEnabled) {
+      await request(`/sedes/${encodeURIComponent(sedeId)}/metrics/zero-search`, {
+        method: 'POST',
+        body: { term },
+      });
+    }
+  } catch {
+    // Silencioso
+  }
+}
+
+/** Dispara webhook seguro hacia CRM, ERP o Google Sheets del cliente si está configurado */
+export async function triggerCustomerWebhook(webhookUrl, orderPayload) {
+  if (!webhookUrl || !webhookUrl.startsWith('http')) return false;
+  try {
+    const res = await fetch(webhookUrl, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(orderPayload),
+      signal: AbortSignal.timeout(6000),
+    });
+    return res.ok;
+  } catch {
+    try {
+      await fetch(webhookUrl, {
+        method: 'POST',
+        mode: 'no-cors',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(orderPayload),
+      });
+      return true;
+    } catch {
+      return false;
+    }
+  }
+}
+
 const LOCAL_DIRECTORY = {
   RUC: {
     '20524854521': { name: 'VMWARE SISTEMA INTEGRAL DE SEGURIDAD S.A.C.-VMWARESIS S.A.C.', estado: 'ACTIVO', condicion: 'HABIDO' },

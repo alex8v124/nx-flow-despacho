@@ -1,6 +1,15 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import catalogData from '../../shared/catalog.json';
-import { fetchStock, reserveOrder, apiEnabled, flushOutbox, outboxSize, sendMissedDemandBeacon } from './lib/api.js';
+import {
+  fetchStock,
+  reserveOrder,
+  apiEnabled,
+  flushOutbox,
+  outboxSize,
+  sendMissedDemandBeacon,
+  sendZeroSearchBeacon,
+  triggerCustomerWebhook,
+} from './lib/api.js';
 import { buildIndex, search } from './lib/search.js';
 import { splitIgv } from './lib/money.js';
 import { store, uuid } from './lib/storage.js';
@@ -10,6 +19,7 @@ import ProductRow from './components/ProductRow.jsx';
 import CheckoutBar from './components/CheckoutBar.jsx';
 import CheckoutSheet from './components/CheckoutSheet.jsx';
 import ExecutiveModal from './components/ExecutiveModal.jsx';
+import ProformaModal from './components/ProformaModal.jsx';
 import { IconSearch, IconX, IconReset } from './components/icons.jsx';
 
 const STORAGE_KEYS = {
@@ -27,14 +37,18 @@ const TARIFAS = {
   MAYORISTA: { key: 'MAYORISTA', label: 'Mayorista', factor: 0.85, badge: '-15%' },
 };
 
-const searchIndex = buildIndex(catalogData.products);
-const categories = ['Todas', ...new Set(catalogData.products.map((p) => p.category))];
-
 export default function App() {
   const online = useOnline();
+  // Catálogo dinámico: soporta el Data Sync Worker (actualización de precios vía CSV/Excel)
+  const [products, setProducts] = useState(() => store.get('nf.custom_catalog', catalogData.products));
+  const searchIndex = useMemo(() => buildIndex(products), [products]);
+  const categories = useMemo(() => ['Todas', ...new Set(products.map((p) => p.category))], [products]);
+
   const [sedeId, setSedeId] = useState(() => store.get(STORAGE_KEYS.SEDE, catalogData.sedes[0].id));
   const [tarifaKey, setTarifaKey] = useState(() => store.get(STORAGE_KEYS.TARIFA, 'MOSTRADOR'));
   const [execOpen, setExecOpen] = useState(false);
+  const [proformaOrder, setProformaOrder] = useState(null);
+  const [proformaOpen, setProformaOpen] = useState(false);
   const [rawQuery, setRawQuery] = useState('');
   const debouncedQuery = useDebounce(rawQuery, 150);
   const [category, setCategory] = useState('Todas');
@@ -168,7 +182,7 @@ export default function App() {
   const handleQtyChange = useCallback(
     (sku, nextQty) => {
       setQuantities((prev) => {
-        const product = catalogData.products.find((p) => p.sku === sku);
+        const product = products.find((p) => p.sku === sku);
         const max = product ? getProductStock(product) : 9999;
 
         // Registrar demanda insatisfecha si se supera el stock disponible
@@ -197,7 +211,7 @@ export default function App() {
         return updated;
       });
     },
-    [getProductStock, startedAt, handleMissedDemand],
+    [getProductStock, startedAt, handleMissedDemand, products],
   );
 
   // Restablecer inventario de demostración a valores de fábrica
@@ -205,9 +219,29 @@ export default function App() {
     setStockDeltas({});
     store.remove('nf.stock_deltas');
     store.remove('nf.unmet_demand');
+    store.remove('nf.zero_searches');
     setToast({
       id: Date.now(),
       message: '✓ Inventario restablecido al 100% y fuga de ventas reiniciada para demostración.',
+    });
+  }, []);
+
+  // Actualización de Catálogo vía Data Sync Worker (Excel / CSV)
+  const handleUpdateCatalog = useCallback((newProducts) => {
+    setProducts(newProducts);
+    store.set('nf.custom_catalog', newProducts);
+    setToast({
+      id: Date.now(),
+      message: `✓ Catálogo sincronizado en caliente: ${newProducts.length} SKUs activos.`,
+    });
+  }, []);
+
+  const handleResetCatalog = useCallback(() => {
+    setProducts(catalogData.products);
+    store.remove('nf.custom_catalog');
+    setToast({
+      id: Date.now(),
+      message: '✓ Catálogo restaurado al inventario base original de demostración.',
     });
   }, []);
 
@@ -222,13 +256,36 @@ export default function App() {
   const filteredProducts = useMemo(() => {
     const cat = category === 'Todas' ? undefined : category;
     return search(searchIndex, debouncedQuery, cat);
-  }, [debouncedQuery, category]);
+  }, [debouncedQuery, category, searchIndex]);
+
+  // Telemetría silenciosa de demanda oculta (búsquedas con 0 resultados)
+  useEffect(() => {
+    const q = debouncedQuery.trim().toLowerCase();
+    if (q.length < 3) return;
+    if (filteredProducts.length === 0) {
+      const history = store.get('nf.zero_searches', []);
+      const existing = history.find((h) => h.term === q);
+      if (existing) {
+        existing.count = (existing.count || 1) + 1;
+        existing.lastSearchedAt = new Date().toISOString();
+      } else {
+        history.push({
+          term: q,
+          count: 1,
+          sedeId,
+          lastSearchedAt: new Date().toISOString(),
+        });
+      }
+      store.set('nf.zero_searches', history.slice(-50));
+      sendZeroSearchBeacon(sedeId, q);
+    }
+  }, [debouncedQuery, filteredProducts.length, sedeId]);
 
   // Líneas del carrito calculadas
   const cartLines = useMemo(() => {
     return Object.entries(quantities)
       .map(([sku, qty]) => {
-        const p = catalogData.products.find((item) => item.sku === sku);
+        const p = products.find((item) => item.sku === sku);
         if (!p || qty <= 0) return null;
         const unitPriceCents = getProductPriceCents(p);
         return {
@@ -242,7 +299,7 @@ export default function App() {
         };
       })
       .filter(Boolean);
-  }, [quantities, getProductPriceCents]);
+  }, [quantities, getProductPriceCents, products]);
 
   const totalUnits = useMemo(() => cartLines.reduce((acc, l) => acc + l.qty, 0), [cartLines]);
   const totalCents = useMemo(() => cartLines.reduce((acc, l) => acc + l.lineTotalCents, 0), [cartLines]);
@@ -306,18 +363,31 @@ export default function App() {
     const url = buildWhatsAppUrl(phone || currentSede.whatsapp, text);
 
     // Guardar en historial de pedidos para exportación contable ERP
-    const ordersHistory = store.get('nf.orders_history', []);
-    ordersHistory.push({
+    const completedOrder = {
       orderId,
       date: new Date().toISOString().replace('T', ' ').slice(0, 19),
-      sede: currentSede.name,
+      sede: currentSede,
       customer,
-      seller,
+      seller: seller || 'Mostrador',
       tarifa: TARIFAS[tarifaKey]?.label || 'Mostrador',
       lines: cartLines,
       totals,
-    });
+      reservation,
+    };
+
+    const ordersHistory = store.get('nf.orders_history', []);
+    ordersHistory.push(completedOrder);
     store.set('nf.orders_history', ordersHistory.slice(-50));
+    setProformaOrder(completedOrder);
+
+    // Si el cliente configuró un webhook hacia su ERP, CRM o Google Sheets, dispararlo en segundo plano
+    const webhookUrl = store.get('nf.webhook_url', '');
+    if (webhookUrl) {
+      triggerCustomerWebhook(webhookUrl, {
+        event: 'ORDER_DISPATCHED',
+        ...completedOrder,
+      });
+    }
 
     // Abrir WhatsApp en pestaña/app
     window.open(url, '_blank', 'noopener,noreferrer');
@@ -506,7 +576,7 @@ export default function App() {
       <main className="mx-auto w-full max-w-2xl flex-1 px-3 pb-32 pt-3">
         <div className="mb-2 flex items-center justify-between text-xs text-slate-400">
           <span>
-            Mostrando <strong className="text-white">{filteredProducts.length}</strong> de {catalogData.products.length} SKUs
+            Mostrando <strong className="text-white">{filteredProducts.length}</strong> de {products.length} SKUs
           </span>
           {totalUnits > 0 && (
             <button
@@ -524,6 +594,7 @@ export default function App() {
           <div className="mt-12 rounded-3xl border border-dashed border-ink-700 p-8 text-center text-slate-400">
             <p className="text-base font-semibold text-slate-300">No encontramos coincidencias para "{rawQuery}"</p>
             <p className="mt-1 text-xs text-slate-500">Prueba con palabras clave como PVC, 12 AWG, taladro o el SKU directo.</p>
+            <p className="mt-1 text-[11px] text-amber-300 font-medium">Búsqueda registrada silenciosamente en Demanda Oculta para compras.</p>
             <button
               type="button"
               onClick={() => {
@@ -577,10 +648,25 @@ export default function App() {
         onClose={() => setSheetOpen(false)}
         onSubmit={handleCheckoutSubmit}
         onNewOrder={handleNewOrder}
+        onViewProforma={() => setProformaOpen(true)}
       />
 
-      {/* Modal de Control Gerencial B2B (Moat Operativo y Exportación Contable) */}
-      <ExecutiveModal open={execOpen} onClose={() => setExecOpen(false)} onResetStock={handleResetStockDemo} />
+      {/* Modal de Control Gerencial B2B (Moat Operativo, Ingestor, Webhooks y Telemetría) */}
+      <ExecutiveModal
+        open={execOpen}
+        onClose={() => setExecOpen(false)}
+        onResetStock={handleResetStockDemo}
+        onUpdateCatalog={handleUpdateCatalog}
+        onResetCatalog={handleResetCatalog}
+        catalog={products}
+        sedeId={sedeId}
+      />
+
+      {/* Modal de Proforma Formal B2B (Cotización Imprimible / PDF Express) */}
+      <ProformaModal
+        order={proformaOpen ? proformaOrder : null}
+        onClose={() => setProformaOpen(false)}
+      />
     </div>
   );
 }

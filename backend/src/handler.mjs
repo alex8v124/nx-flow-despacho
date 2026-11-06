@@ -96,6 +96,22 @@ export function createHandler({ config = loadConfig(), repo, service, processWeb
     },
     {
       method: 'POST',
+      re: /^\/sedes\/([^/]+)\/metrics\/zero-search$/,
+      run: async ({ params, body }) => {
+        await service.recordZeroSearch(params[0], body?.term);
+        return { status: 200, body: { ok: true } };
+      },
+    },
+    {
+      method: 'GET',
+      re: /^\/sedes\/([^/]+)\/metrics\/zero-search$/,
+      run: async ({ params }) => ({
+        status: 200,
+        body: { items: await service.getZeroSearches(params[0]) },
+      }),
+    },
+    {
+      method: 'POST',
       re: /^\/webhooks\/([a-z]+)$/,
       raw: true,
       run: async ({ params, rawBody, headers }) => ({

@@ -13,7 +13,7 @@ const RESERVATION_LABEL = {
   DEMO: { text: 'Modo demo · stock local', cls: 'text-slate-400' },
 };
 
-function Success({ result, onNewOrder }) {
+function Success({ result, onNewOrder, onViewProforma }) {
   const r = RESERVATION_LABEL[result.reservation];
   return (
     <div className="flex flex-col items-center px-2 pb-2 pt-4 text-center">
@@ -29,19 +29,28 @@ function Success({ result, onNewOrder }) {
       <p className="text-sm text-slate-400">del primer producto al WhatsApp</p>
       <p className={`mt-4 text-sm font-medium ${r.cls}`}>{r.text}</p>
 
-      <div className="mt-6 grid w-full gap-3">
+      <div className="mt-6 grid w-full gap-2.5">
         <a
           href={result.url}
           target="_blank"
           rel="noopener noreferrer"
-          className="flex h-16 items-center justify-center gap-2 rounded-2xl border-2 border-emerald-500 text-lg font-bold text-emerald-300 active:bg-emerald-500/10"
+          className="flex h-14 items-center justify-center gap-2 rounded-2xl border-2 border-emerald-500 text-base font-bold text-emerald-300 active:bg-emerald-500/10 transition-all"
         >
-          <IconWhatsApp /> Abrir WhatsApp otra vez
+          <IconWhatsApp /> Abrir WhatsApp
         </a>
+        {onViewProforma && (
+          <button
+            type="button"
+            onClick={onViewProforma}
+            className="flex h-14 items-center justify-center gap-2 rounded-2xl border border-cyan-400/60 bg-cyan-400/10 text-base font-bold text-cyan-300 active:bg-cyan-400/20 transition-all"
+          >
+            📄 Ver Proforma Formal B2B
+          </button>
+        )}
         <button
           type="button"
           onClick={onNewOrder}
-          className="h-16 rounded-2xl bg-cyan-400 text-lg font-bold text-ink-950 active:bg-cyan-300"
+          className="h-14 rounded-2xl bg-cyan-400 text-base font-bold text-ink-950 active:bg-cyan-300 transition-all"
         >
           Nuevo pedido
         </button>
@@ -50,7 +59,20 @@ function Success({ result, onNewOrder }) {
   );
 }
 
-export default function CheckoutSheet({ open, sede, lines, totals, defaults, busy, error, result, onClose, onSubmit, onNewOrder }) {
+export default function CheckoutSheet({
+  open,
+  sede,
+  lines,
+  totals,
+  defaults,
+  busy,
+  error,
+  result,
+  onClose,
+  onSubmit,
+  onNewOrder,
+  onViewProforma,
+}) {
   const [kind, setKind] = useState('BOLETA');
   // Formularios 100% independientes para Boleta y Factura con bloqueo automático
   const [boleta, setBoleta] = useState({ name: '', doc: '', locked: false, status: '' });
@@ -204,7 +226,7 @@ export default function CheckoutSheet({ open, sede, lines, totals, defaults, bus
       >
         <div className="mx-auto mb-3 h-1.5 w-12 rounded-full bg-ink-600" />
         {result ? (
-          <Success result={result} onNewOrder={handleResetAndNewOrder} />
+          <Success result={result} onNewOrder={handleResetAndNewOrder} onViewProforma={onViewProforma} />
         ) : (
           <form onSubmit={submit} className="space-y-4">
             <div className="flex items-center justify-between">

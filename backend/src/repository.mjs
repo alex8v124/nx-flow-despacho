@@ -317,5 +317,36 @@ export function createRepository({ doc, tableName, now = () => new Date() }) {
         updatedAt: item.updatedAt,
       })).sort((a, b) => b.totalLostCents - a.totalLostCents);
     },
+
+    /** Contador atómico en DynamoDB para búsquedas sin resultados (Telemetría de Demanda Oculta) */
+    async recordZeroSearch(sedeId, term) {
+      const cleanTerm = String(term || '').toLowerCase().trim().slice(0, 80);
+      if (!cleanTerm) return;
+      await doc.send(
+        new UpdateCommand({
+          TableName: tableName,
+          Key: { PK: keys.sede(sedeId), SK: `SEARCH_ZERO#${cleanTerm}` },
+          UpdateExpression: 'ADD #cnt :one SET #term = :term, #updatedAt = :ts',
+          ExpressionAttributeNames: { '#cnt': 'searchCount', '#term': 'term', '#updatedAt': 'updatedAt' },
+          ExpressionAttributeValues: { ':one': 1, ':term': cleanTerm, ':ts': now().toISOString() },
+        }),
+      );
+    },
+
+    /** Consulta de búsquedas con cero resultados para abastecimiento e importaciones */
+    async listZeroSearches(sedeId) {
+      const res = await doc.send(
+        new QueryCommand({
+          TableName: tableName,
+          KeyConditionExpression: 'PK = :pk AND begins_with(SK, :sk)',
+          ExpressionAttributeValues: { ':pk': keys.sede(sedeId), ':sk': 'SEARCH_ZERO#' },
+        }),
+      );
+      return (res.Items || []).map((item) => ({
+        term: item.term,
+        searchCount: item.searchCount || 0,
+        updatedAt: item.updatedAt,
+      })).sort((a, b) => b.searchCount - a.searchCount);
+    },
   };
 }

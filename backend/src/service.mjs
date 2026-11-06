@@ -140,5 +140,15 @@ export function createService({ repo, config, integrations = {}, now = () => new
       assertSede(sedeId);
       return repo.listMissedDemand(sedeId);
     },
+
+    async recordZeroSearch(sedeId, term) {
+      assertSede(sedeId);
+      return repo.recordZeroSearch(sedeId, term);
+    },
+
+    async getZeroSearches(sedeId) {
+      assertSede(sedeId);
+      return repo.listZeroSearches(sedeId);
+    },
   };
 }
