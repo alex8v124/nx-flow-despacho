@@ -167,7 +167,14 @@ export default function ProformaModal({ order, onClose }) {
                   </td>
                   {mode === 'PROFORMA' && (
                     <>
-                      <td className="px-3 py-2.5 text-right tabular-nums text-slate-300 print:text-black">{soles(l.unitPriceCents)}</td>
+                      <td className="px-3 py-2.5 text-right tabular-nums text-slate-300 print:text-black">
+                        <div>{soles(l.unitPriceCents)}</div>
+                        {l.isCustomPrice && (
+                          <span className="inline-block rounded bg-amber-400/20 px-1 text-[9px] font-bold text-amber-300 print:text-slate-800 print:border print:border-slate-400">
+                            Pactado
+                          </span>
+                        )}
+                      </td>
                       <td className="px-3 py-2.5 text-right font-bold tabular-nums text-white print:text-black">{soles(l.lineTotalCents)}</td>
                     </>
                   )}

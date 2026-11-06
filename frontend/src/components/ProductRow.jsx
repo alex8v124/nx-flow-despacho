@@ -2,8 +2,18 @@ import { memo } from 'react';
 import { soles } from '../lib/money.js';
 import { IconMinus, IconPlus } from './icons.jsx';
 
-/** Fila de producto ultraligera, clara y optimizada para pantallas móviles. */
-function ProductRow({ product, qty, stock, priceCents, onChange, onMissedDemand, currentSedeId }) {
+/** Fila de producto ultraligera con soporte de precios especiales acordados. */
+function ProductRow({
+  product,
+  qty,
+  stock,
+  priceCents,
+  onChange,
+  onMissedDemand,
+  currentSedeId,
+  onEditPrice,
+  isCustomPrice,
+}) {
   const { sku, name, category, unit } = product;
   const max = Math.max(0, stock);
   const soldOut = max === 0;
@@ -39,11 +49,28 @@ function ProductRow({ product, qty, stock, priceCents, onChange, onMissedDemand,
         </h3>
 
         {/* Precio y Disponibilidad en una sola línea clara */}
-        <div className="mt-1 flex flex-wrap items-baseline gap-x-2 gap-y-0.5 text-xs">
-          <span className="text-sm font-bold tabular-nums text-white">
-            {soles(priceCents)}
-          </span>
-          <span className="text-[10px] text-slate-400">/{unit}</span>
+        <div className="mt-1 flex flex-wrap items-center gap-x-2 gap-y-0.5 text-xs">
+          {/* Botón táctil para consultar o acordar precio especial */}
+          <button
+            type="button"
+            onClick={() => onEditPrice?.(product)}
+            className={`inline-flex items-center gap-1 rounded-md px-1.5 py-0.5 text-xs font-bold transition-all ${
+              isCustomPrice
+                ? 'bg-amber-400/20 text-amber-300 border border-amber-400/40 shadow-sm'
+                : 'text-white hover:text-cyan-300 active:scale-95'
+            }`}
+            title="Toca para modificar o acordar precio"
+          >
+            <span>{soles(priceCents)}</span>
+            <span className="text-[10px] font-normal opacity-75">/{unit}</span>
+            {isCustomPrice ? (
+              <span className="rounded bg-amber-400 text-ink-950 px-1 text-[8px] font-black uppercase">
+                Pactado
+              </span>
+            ) : (
+              <span className="text-[10px] text-slate-500 hover:text-cyan-400">✏️</span>
+            )}
+          </button>
 
           {/* Estado de Stock simplificado */}
           {soldOut ? (

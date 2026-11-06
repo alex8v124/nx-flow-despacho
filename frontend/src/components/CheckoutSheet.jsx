@@ -262,6 +262,11 @@ export default function CheckoutSheet({
                     <div className="min-w-0 flex-1 truncate text-slate-200">
                       <span className="font-bold tabular-nums text-cyan-300 mr-1.5">{l.qty}×</span>
                       <span>{l.name}</span>
+                      {l.isCustomPrice && (
+                        <span className="ml-1.5 rounded bg-amber-400/20 px-1 py-0.2 font-mono text-[9px] font-bold text-amber-300">
+                          Pactado
+                        </span>
+                      )}
                     </div>
                     <span className="shrink-0 font-semibold tabular-nums text-white ml-2">
                       {soles(l.lineTotalCents)}

@@ -23,7 +23,8 @@ export function buildWhatsAppText({ orderId, sede, seller, customer, notes, line
   if (customer?.docType && customer?.docNumber) out.push(`${customer.docType}: ${customer.docNumber}`);
   out.push('');
   for (const l of lines) {
-    out.push(`*${l.qty} x* ${l.name}`);
+    const pactado = l.isCustomPrice ? ' _(precio pactado especial)_' : '';
+    out.push(`*${l.qty} x* ${l.name}${pactado}`);
     out.push(`    ${l.sku} · ${l.unit} · ${soles(l.unitPriceCents)} c/u → ${soles(l.lineTotalCents)}`);
   }
   out.push('');

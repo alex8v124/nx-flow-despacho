@@ -20,6 +20,7 @@ import CheckoutBar from './components/CheckoutBar.jsx';
 import CheckoutSheet from './components/CheckoutSheet.jsx';
 import ExecutiveModal from './components/ExecutiveModal.jsx';
 import ProformaModal from './components/ProformaModal.jsx';
+import PriceEditModal from './components/PriceEditModal.jsx';
 import { IconSearch, IconX, IconReset } from './components/icons.jsx';
 
 const STORAGE_KEYS = {
@@ -100,6 +101,9 @@ export default function App() {
   }, []);
   const [proformaOrder, setProformaOrder] = useState(null);
   const [proformaOpen, setProformaOpen] = useState(false);
+  // Precios pactados por SKU según acuerdos comerciales / venta masiva
+  const [customPrices, setCustomPrices] = useState(() => store.get('nf.custom_prices', {}));
+  const [editingPriceProduct, setEditingPriceProduct] = useState(null);
   const [rawQuery, setRawQuery] = useState('');
   const debouncedQuery = useDebounce(rawQuery, 150);
   const [category, setCategory] = useState('Todas');
@@ -180,14 +184,51 @@ export default function App() {
     setServerStock(null);
   };
 
-  // Cálculo de precio según tarifa B2B segmentada (Mostrador, Taller, Mayorista)
+  // Cálculo de precio según precio pactado o tarifa B2B segmentada (Mostrador, Taller, Mayorista)
   const getProductPriceCents = useCallback(
     (product) => {
+      if (customPrices && typeof customPrices[product.sku] === 'number') {
+        return customPrices[product.sku];
+      }
       const factor = TARIFAS[tarifaKey]?.factor || 1.0;
       return Math.round(product.priceCents * factor);
     },
-    [tarifaKey],
+    [customPrices, tarifaKey],
   );
+
+  // Modificar precio pactado por acuerdo comercial / venta masiva
+  const handleSaveCustomPrice = useCallback(
+    (newPriceSoles) => {
+      if (!editingPriceProduct) return;
+      const sku = editingPriceProduct.sku;
+      const cents = Math.round(newPriceSoles * 100);
+      setCustomPrices((prev) => {
+        const next = { ...prev, [sku]: cents };
+        store.set('nf.custom_prices', next);
+        return next;
+      });
+      setToast({
+        id: Date.now(),
+        message: `🏷️ Precio pactado fijado: S/ ${newPriceSoles.toFixed(2)} para ${editingPriceProduct.name}`,
+      });
+    },
+    [editingPriceProduct],
+  );
+
+  const handleResetCustomPrice = useCallback(() => {
+    if (!editingPriceProduct) return;
+    const sku = editingPriceProduct.sku;
+    setCustomPrices((prev) => {
+      const next = { ...prev };
+      delete next[sku];
+      store.set('nf.custom_prices', next);
+      return next;
+    });
+    setToast({
+      id: Date.now(),
+      message: `✓ Precio de ${editingPriceProduct.name} restaurado a tarifa estándar.`,
+    });
+  }, [editingPriceProduct]);
 
   // Cantidad y stock por producto considerando los despachos efectuados
   const getProductStock = useCallback(
@@ -268,12 +309,14 @@ export default function App() {
   // Restablecer inventario de demostración a valores de fábrica
   const handleResetStockDemo = useCallback(() => {
     setStockDeltas({});
+    setCustomPrices({});
+    store.remove('nf.custom_prices');
     store.remove('nf.stock_deltas');
     store.remove('nf.unmet_demand');
     store.remove('nf.zero_searches');
     setToast({
       id: Date.now(),
-      message: '✓ Inventario restablecido al 100% y fuga de ventas reiniciada para demostración.',
+      message: '✓ Inventario y acuerdos de precio restablecidos para demostración.',
     });
   }, []);
 
@@ -298,6 +341,8 @@ export default function App() {
 
   const resetCart = () => {
     setQuantities({});
+    setCustomPrices({});
+    store.remove('nf.custom_prices');
     setStartedAt(null);
     setCheckoutError(null);
     setCheckoutResult(null);
@@ -339,6 +384,7 @@ export default function App() {
         const p = products.find((item) => item.sku === sku);
         if (!p || qty <= 0) return null;
         const unitPriceCents = getProductPriceCents(p);
+        const isCustom = typeof customPrices[sku] === 'number';
         return {
           sku: p.sku,
           name: p.name,
@@ -347,10 +393,12 @@ export default function App() {
           qty,
           unitPriceCents,
           lineTotalCents: unitPriceCents * qty,
+          isCustomPrice: isCustom,
+          basePriceCents: p.priceCents,
         };
       })
       .filter(Boolean);
-  }, [quantities, getProductPriceCents, products]);
+  }, [quantities, getProductPriceCents, products, customPrices]);
 
   const totalUnits = useMemo(() => cartLines.reduce((acc, l) => acc + l.qty, 0), [cartLines]);
   const totalCents = useMemo(() => cartLines.reduce((acc, l) => acc + l.lineTotalCents, 0), [cartLines]);
@@ -656,6 +704,8 @@ export default function App() {
                 onChange={handleQtyChange}
                 onMissedDemand={handleMissedDemand}
                 currentSedeId={sedeId}
+                onEditPrice={(prod) => setEditingPriceProduct(prod)}
+                isCustomPrice={typeof customPrices[p.sku] === 'number'}
               />
             ))}
           </ul>
@@ -766,6 +816,18 @@ export default function App() {
       <ProformaModal
         order={proformaOpen ? proformaOrder : null}
         onClose={() => setProformaOpen(false)}
+      />
+
+      {/* Modal de Modificación y Negociación de Precio Pactado (Venta Masiva / Obra) */}
+      <PriceEditModal
+        open={Boolean(editingPriceProduct)}
+        product={editingPriceProduct}
+        currentPriceCents={editingPriceProduct ? getProductPriceCents(editingPriceProduct) : 0}
+        basePriceCents={editingPriceProduct?.priceCents || 0}
+        isCustom={editingPriceProduct ? typeof customPrices[editingPriceProduct.sku] === 'number' : false}
+        onSave={handleSaveCustomPrice}
+        onReset={handleResetCustomPrice}
+        onClose={() => setEditingPriceProduct(null)}
       />
     </div>
   );
