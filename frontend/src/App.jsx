@@ -54,6 +54,50 @@ export default function App() {
   const [sedeId, setSedeId] = useState(() => store.get(STORAGE_KEYS.SEDE, catalogData.sedes[0].id));
   const [tarifaKey, setTarifaKey] = useState(() => store.get(STORAGE_KEYS.TARIFA, 'MOSTRADOR'));
   const [execOpen, setExecOpen] = useState(false);
+  const [pinModalOpen, setPinModalOpen] = useState(false);
+  const [pinInput, setPinInput] = useState('');
+  const [pinError, setPinError] = useState(false);
+  const logoTapRef = useRef({ count: 0, lastTime: 0 });
+
+  const handleLogoClick = () => {
+    const now = Date.now();
+    if (now - logoTapRef.current.lastTime < 1500) {
+      logoTapRef.current.count += 1;
+    } else {
+      logoTapRef.current.count = 1;
+    }
+    logoTapRef.current.lastTime = now;
+
+    if (logoTapRef.current.count >= 3) {
+      logoTapRef.current.count = 0;
+      setPinInput('');
+      setPinError(false);
+      setPinModalOpen(true);
+    }
+  };
+
+  const handleVerifyPin = (e) => {
+    e?.preventDefault();
+    if (pinInput.trim() === '1234') {
+      setPinModalOpen(false);
+      setPinInput('');
+      setPinError(false);
+      setExecOpen(true);
+    } else {
+      setPinError(true);
+    }
+  };
+
+  // Acceso directo a administración vía URL (?admin=true o #admin)
+  useEffect(() => {
+    if (typeof window === 'undefined') return;
+    const params = new URLSearchParams(window.location.search);
+    if (params.get('admin') === 'true' || window.location.hash === '#admin') {
+      setPinInput('');
+      setPinError(false);
+      setPinModalOpen(true);
+    }
+  }, []);
   const [proformaOrder, setProformaOrder] = useState(null);
   const [proformaOpen, setProformaOpen] = useState(false);
   const [rawQuery, setRawQuery] = useState('');
@@ -428,52 +472,53 @@ export default function App() {
 
   return (
     <div className="flex min-h-dvh flex-col bg-ink-950 font-sans text-slate-100">
-      {/* Top Header */}
-      <header className="sticky top-0 z-20 border-b border-ink-800 bg-ink-900/90 backdrop-blur">
-        <div className="mx-auto flex max-w-2xl items-center justify-between px-3 py-2.5">
-          <div className="flex items-center gap-2">
+      {/* Top Header Compacto */}
+      <header className="sticky top-0 z-20 border-b border-ink-800/80 bg-ink-900/95 backdrop-blur shadow-sm">
+        {/* Fila 1: Logo & Branding + Estado de Conexión + Selector de Sede */}
+        <div className="mx-auto flex max-w-2xl items-center justify-between px-3 py-1.5">
+          <div
+            onClick={handleLogoClick}
+            className="flex items-center gap-2 cursor-pointer select-none group"
+            title="Nodux Flow (Toque 3 veces para Centro de Control)"
+          >
             <img
               src="/logo-64.webp"
-              alt="Nodux Logo"
-              width="32"
-              height="32"
-              className="h-8 w-8 rounded-xl object-contain bg-ink-900 border border-ink-700/80 shadow-sm shadow-cyan-400/20"
+              alt="Nodux"
+              width="28"
+              height="28"
+              className="h-7 w-7 rounded-lg object-contain bg-ink-900 border border-ink-700/80 shadow-sm group-active:scale-95 transition-transform"
             />
             <div>
               <div className="flex items-center gap-1.5 leading-none">
-                <span className="text-base font-black tracking-tight text-white">NODUX FLOW</span>
-                <span className="rounded bg-cyan-500/15 px-1.5 py-0.5 font-mono text-[10px] font-semibold text-cyan-300">
-                  {isClientPortal ? 'B2B' : 'v0.1'}
+                <span className="text-sm font-black tracking-tight text-white">NODUX FLOW</span>
+                <span className="rounded bg-cyan-500/15 px-1 py-0.2 font-mono text-[9px] font-bold text-cyan-300">
+                  {isClientPortal ? 'B2B' : 'PRO'}
                 </span>
               </div>
-              <span className="text-[10px] text-slate-400">
-                {isClientPortal ? 'Portal de Autopedido para Clientes' : 'Terminal Móvil de Despacho B2B'}
-              </span>
             </div>
           </div>
 
-          <div className="flex items-center gap-2">
-            {/* Estado de conexión / Offline outbox */}
+          <div className="flex items-center gap-1.5">
             {pendingSync > 0 && (
-              <span className="rounded-full bg-amber-500/20 px-2 py-0.5 text-[10px] font-bold text-amber-300">
-                {pendingSync} en cola
+              <span className="rounded-full bg-amber-500/20 px-2 py-0.5 text-[9px] font-bold text-amber-300">
+                {pendingSync} cola
               </span>
             )}
             <span
-              className={`flex items-center gap-1 rounded-full px-2 py-0.5 text-[11px] font-medium ${
+              className={`flex items-center gap-1 rounded-full px-1.5 py-0.5 text-[10px] font-medium ${
                 online ? 'bg-emerald-500/15 text-emerald-300' : 'bg-rose-500/15 text-rose-300'
               }`}
             >
               <span className={`h-1.5 w-1.5 rounded-full ${online ? 'bg-emerald-400' : 'bg-rose-400'}`} />
-              {online ? 'Online' : 'Sin red'}
+              {online ? 'Online' : 'Offline'}
             </span>
 
-            {/* Selector de Sede */}
+            {/* Selector de Sede compacto */}
             <select
               value={sedeId}
               onChange={handleSedeChange}
               aria-label="Seleccionar sede"
-              className="h-9 rounded-xl border border-ink-700 bg-ink-800 px-2 text-xs font-semibold text-white outline-none focus:border-cyan-400"
+              className="h-7 rounded-lg border border-ink-700 bg-ink-800 px-1.5 text-[11px] font-semibold text-white outline-none focus:border-cyan-400"
             >
               {catalogData.sedes.map((s) => (
                 <option key={s.id} value={s.id}>
@@ -484,55 +529,20 @@ export default function App() {
           </div>
         </div>
 
-        {/* Barra de Tarifas B2B & Moat de Control Gerencial */}
-        <div className="mx-auto flex max-w-2xl items-center justify-between border-t border-ink-800/80 bg-ink-950/40 px-3 py-1.5">
-          <div className="flex items-center gap-1.5 overflow-x-auto no-scrollbar">
-            <span className="text-[10px] font-bold uppercase tracking-wider text-slate-400">Tarifa:</span>
-            {Object.values(TARIFAS).map((t) => (
-              <button
-                key={t.key}
-                type="button"
-                onClick={() => setTarifaKey(t.key)}
-                className={`rounded-lg px-2 py-0.5 text-[11px] font-bold transition-all ${
-                  tarifaKey === t.key
-                    ? 'bg-cyan-400 text-ink-950 shadow-sm shadow-cyan-400/20'
-                    : 'bg-ink-800 text-slate-400 hover:text-white'
-                }`}
-              >
-                {t.label} <span className="opacity-75 font-normal text-[10px]">({t.badge})</span>
-              </button>
-            ))}
-          </div>
-
-          {!isClientPortal ? (
-            <button
-              type="button"
-              onClick={() => setExecOpen(true)}
-              className="flex shrink-0 items-center gap-1 rounded-lg border border-emerald-500/40 bg-emerald-500/10 px-2.5 py-1 text-[11px] font-bold text-emerald-300 hover:bg-emerald-500/20 active:scale-95 transition-all"
-            >
-              📊 Panel Gerencial
-            </button>
-          ) : (
-            <span className="flex shrink-0 items-center gap-1 rounded-lg border border-cyan-500/30 bg-cyan-500/10 px-2.5 py-1 text-[11px] font-bold text-cyan-300">
-              ⚡ Pedido Directo
-            </span>
-          )}
-        </div>
-
-        {/* Buscador reactivo ultraligero */}
-        <div className="mx-auto max-w-2xl px-3 pb-2 pt-1">
+        {/* Fila 2: Buscador reactivo ultraligero */}
+        <div className="mx-auto max-w-2xl px-3 pb-1.5">
           <div className="relative flex items-center">
-            <span className="pointer-events-none absolute left-3.5 text-slate-400">
-              <IconSearch width={20} height={20} />
+            <span className="pointer-events-none absolute left-3 text-slate-400">
+              <IconSearch width={16} height={16} />
             </span>
             <input
               ref={searchInputRef}
               type="search"
               inputMode="search"
-              placeholder="Buscar SKU o nombre técnico (ej: 110, soldadura, cable)..."
+              placeholder="Buscar SKU, producto o marca (ej: 110, cable, pavco)..."
               value={rawQuery}
               onChange={(e) => setRawQuery(e.target.value)}
-              className="h-12 w-full rounded-2xl border border-ink-700 bg-ink-800/80 pl-11 pr-10 text-sm text-white placeholder:text-slate-500 outline-none transition-colors focus:border-cyan-400 focus:bg-ink-800"
+              className="h-9 w-full rounded-xl border border-ink-700 bg-ink-800/90 pl-9 pr-8 text-xs text-white placeholder:text-slate-400 outline-none transition-colors focus:border-cyan-400 focus:bg-ink-800"
             />
             {rawQuery && (
               <button
@@ -541,33 +551,49 @@ export default function App() {
                   setRawQuery('');
                   searchInputRef.current?.focus();
                 }}
-                className="absolute right-3 grid h-7 w-7 place-items-center rounded-lg bg-ink-700 text-slate-300 active:bg-ink-600"
+                className="absolute right-2 grid h-6 w-6 place-items-center rounded-md bg-ink-700 text-slate-300 active:bg-ink-600"
                 aria-label="Limpiar búsqueda"
               >
-                <IconX width={16} height={16} />
+                <IconX width={13} height={13} />
               </button>
             )}
           </div>
+        </div>
 
-          {/* Chips de Categorías */}
-          <div className="no-scrollbar mt-2 flex gap-1.5 overflow-x-auto py-1">
-            {categories.map((c) => {
-              const active = category === c;
-              return (
-                <button
-                  key={c}
-                  type="button"
-                  onClick={() => setCategory(c)}
-                  className={`shrink-0 rounded-xl px-3 py-1.5 text-xs font-semibold transition-all ${
-                    active
-                      ? 'bg-cyan-400 text-ink-950 shadow-sm shadow-cyan-400/30'
-                      : 'bg-ink-800 text-slate-400 hover:text-white active:bg-ink-700'
-                  }`}
-                >
-                  {c}
-                </button>
-              );
-            })}
+        {/* Fila 3: Filtro compacto de Categoría + Segmentación de Tarifas B2B */}
+        <div className="mx-auto flex max-w-2xl items-center justify-between border-t border-ink-800/60 bg-ink-950/60 px-3 py-1 gap-2">
+          {/* Dropdown de Categoría */}
+          <div className="flex items-center min-w-0 shrink">
+            <select
+              value={category}
+              onChange={(e) => setCategory(e.target.value)}
+              aria-label="Filtrar por categoría"
+              className="h-7 max-w-[145px] truncate rounded-lg border border-ink-700/80 bg-ink-800/90 px-2 text-[11px] font-semibold text-slate-200 outline-none focus:border-cyan-400"
+            >
+              {categories.map((c) => (
+                <option key={c} value={c}>
+                  {c === 'Todas' ? '📂 Categorías' : c}
+                </option>
+              ))}
+            </select>
+          </div>
+
+          {/* Selector de Tarifas B2B */}
+          <div className="flex items-center gap-1 shrink-0">
+            {Object.values(TARIFAS).map((t) => (
+              <button
+                key={t.key}
+                type="button"
+                onClick={() => setTarifaKey(t.key)}
+                className={`rounded-lg px-2 py-0.5 text-[10px] font-bold transition-all ${
+                  tarifaKey === t.key
+                    ? 'bg-cyan-400 text-ink-950 shadow-sm shadow-cyan-400/20'
+                    : 'bg-ink-800 text-slate-400 hover:text-white'
+                }`}
+              >
+                {t.label} <span className="opacity-75 font-normal text-[9px]">{t.badge}</span>
+              </button>
+            ))}
           </div>
         </div>
       </header>
@@ -668,6 +694,67 @@ export default function App() {
         onNewOrder={handleNewOrder}
         onViewProforma={() => setProformaOpen(true)}
       />
+
+      {/* Modal de Acceso Seguro por PIN al Centro de Control */}
+      {pinModalOpen && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/75 p-4 backdrop-blur-sm">
+          <div className="w-full max-w-xs rounded-2xl border border-ink-700 bg-ink-900 p-5 shadow-2xl">
+            <div className="text-center">
+              <div className="mx-auto mb-2 flex h-10 w-10 items-center justify-center rounded-xl bg-cyan-500/10 text-lg">
+                🔒
+              </div>
+              <h3 className="text-sm font-bold text-white">Centro de Control</h3>
+              <p className="mt-1 text-xs text-slate-400">
+                Ingrese el PIN de acceso gerencial.
+              </p>
+              <p className="text-[10px] text-cyan-400 font-mono mt-0.5">(PIN demo: 1234)</p>
+            </div>
+
+            <form onSubmit={handleVerifyPin} className="mt-4">
+              <input
+                type="password"
+                inputMode="numeric"
+                maxLength={8}
+                autoFocus
+                placeholder="PIN (1234)"
+                value={pinInput}
+                onChange={(e) => {
+                  setPinInput(e.target.value);
+                  setPinError(false);
+                }}
+                className={`h-11 w-full text-center tracking-widest text-lg font-bold rounded-xl border bg-ink-950 px-3 text-white outline-none transition-colors ${
+                  pinError ? 'border-rose-500 text-rose-300' : 'border-ink-700 focus:border-cyan-400'
+                }`}
+              />
+              {pinError && (
+                <p className="mt-1.5 text-center text-xs text-rose-400 font-semibold">
+                  PIN incorrecto. Intente con 1234.
+                </p>
+              )}
+
+              <div className="mt-4 flex gap-2">
+                <button
+                  type="button"
+                  onClick={() => {
+                    setPinModalOpen(false);
+                    setPinInput('');
+                    setPinError(false);
+                  }}
+                  className="flex-1 rounded-xl bg-ink-800 py-2.5 text-xs font-semibold text-slate-300 hover:bg-ink-700"
+                >
+                  Cancelar
+                </button>
+                <button
+                  type="submit"
+                  className="flex-1 rounded-xl bg-cyan-400 py-2.5 text-xs font-bold text-ink-950 shadow-md shadow-cyan-400/20 active:scale-95"
+                >
+                  Ingresar
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
 
       {/* Modal de Control Gerencial B2B (Moat Operativo, Ingestor, Webhooks y Telemetría) */}
       <ExecutiveModal

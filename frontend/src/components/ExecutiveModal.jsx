@@ -270,12 +270,12 @@ export default function ExecutiveModal({
           <div>
             <div className="flex items-center gap-2">
               <span className="rounded bg-emerald-500/20 px-2 py-0.5 text-xs font-bold text-emerald-300 border border-emerald-500/30">
-                Commercial OS
+                Centro de Control
               </span>
-              <h2 className="text-xl font-black text-white">Panel de Control Gerencial B2B</h2>
+              <h2 className="text-xl font-black text-white">Panel de Control Gerencial</h2>
             </div>
             <p className="mt-0.5 text-xs text-slate-400">
-              Desacople administrativo: telemetría de demanda, auditoría de asesores y sincronización ERP.
+              Métricas operativas, demanda no cubierta y sincronización contable.
             </p>
           </div>
           <button
@@ -396,11 +396,11 @@ export default function ExecutiveModal({
             {/* Telemetría de Demanda Oculta (Búsquedas sin Resultado) */}
             <div className="rounded-2xl border border-amber-500/30 bg-amber-500/5 p-4">
               <div className="flex items-center justify-between">
-                <h3 className="text-sm font-bold text-white">🔍 Telemetría de Demanda Oculta (Productos no existentes)</h3>
-                <span className="rounded bg-amber-500/20 px-2 py-0.5 text-[10px] font-bold text-amber-300">Insumo de Compras</span>
+                <h3 className="text-sm font-bold text-white">🔍 Productos Solicitados Fuera de Catálogo</h3>
+                <span className="rounded bg-amber-500/20 px-2 py-0.5 text-[10px] font-bold text-amber-300">Demanda No Cubierta</span>
               </div>
               <p className="mt-1 text-xs text-slate-300 leading-relaxed">
-                Términos que los asesores o clientes escribieron en la barra de búsqueda y que arrojaron <strong>0 resultados</strong> en catálogo. Señal directa de demanda desatendida para ampliar inventario o importaciones:
+                Términos buscados por clientes en sala o WhatsApp que no arrojaron <strong>coincidencias</strong> en catálogo. Insumo directo para el área de compras e importaciones:
               </p>
 
               {zeroSearches.length === 0 ? (
@@ -481,11 +481,11 @@ export default function ExecutiveModal({
           <div className="mt-3 space-y-4">
             <div className="rounded-2xl border border-cyan-500/30 bg-cyan-500/5 p-4">
               <div className="flex items-center justify-between">
-                <h3 className="text-sm font-bold text-white">Pipeline de Ingesta Continua (Data Sync Worker)</h3>
-                <span className="rounded bg-cyan-500/20 px-2 py-0.5 text-[10px] font-bold text-cyan-300">Retención MRR</span>
+                <h3 className="text-sm font-bold text-white">Actualización de Catálogo e Inventario</h3>
+                <span className="rounded bg-cyan-500/20 px-2 py-0.5 text-[10px] font-bold text-cyan-300">Sincronización</span>
               </div>
               <p className="mt-1 text-xs text-slate-300 leading-relaxed">
-                El componente que justifica el mantenimiento mensual: actualiza listas de precios, nuevos SKUs y existencias arrastrando el archivo CSV o Excel sin tocar código ni reiniciar la terminal.
+                Actualice masivamente listas de precios, nuevos códigos y existencias cargando un archivo CSV o Excel sin interrumpir la operación de ventas.
               </p>
 
               {/* Zona Drag & Drop */}
@@ -574,7 +574,7 @@ export default function ExecutiveModal({
             <div className="rounded-2xl border border-cyan-500/30 bg-cyan-500/5 p-4">
               <div className="flex items-center justify-between">
                 <h3 className="text-sm font-bold text-white">Portal B2B de Autopedido para Clientes</h3>
-                <span className="rounded bg-cyan-500/20 px-2 py-0.5 text-[10px] font-bold text-cyan-300">Caso 2: Autodespacho</span>
+                <span className="rounded bg-cyan-500/20 px-2 py-0.5 text-[10px] font-bold text-cyan-300">Acceso Clientes</span>
               </div>
               <p className="mt-1 text-xs text-slate-300 leading-relaxed">
                 Permite a tus contratistas, maestros de obra, talleres y subdistribuidores armar su propia cotización desde la obra o taller a cualquier hora. El pedido te llega masticado a WhatsApp listo para facturar.
@@ -630,7 +630,7 @@ export default function ExecutiveModal({
         {tab === 'webhook' && (
           <div className="mt-3 space-y-4">
             <div className="rounded-2xl border border-cyan-500/30 bg-cyan-500/5 p-4">
-              <h3 className="text-sm font-bold text-white">Puente Contable y Cierre Transaccional (Lead to ERP)</h3>
+              <h3 className="text-sm font-bold text-white">Integración Contable y ERP</h3>
               <p className="mt-1 text-xs text-slate-300 leading-relaxed">
                 Nodux Flow no obliga al asistente a transcribir desde WhatsApp. Los pedidos quedan pre-registrados en estructura contable para StarSoft, Concar, SAP B1 o inyección directa a Nubefact:
               </p>
@@ -727,7 +727,7 @@ export default function ExecutiveModal({
             <div className="rounded-2xl border border-cyan-500/30 bg-cyan-500/5 p-4">
               <div className="flex items-center justify-between">
                 <h3 className="text-sm font-bold text-white">Portal B2B de Autopedido para Clientes</h3>
-                <span className="rounded bg-cyan-500/20 px-2 py-0.5 text-[10px] font-bold text-cyan-300">Caso 2: Autodespacho</span>
+                <span className="rounded bg-cyan-500/20 px-2 py-0.5 text-[10px] font-bold text-cyan-300">Acceso Clientes</span>
               </div>
               <p className="mt-1 text-xs text-slate-300 leading-relaxed">
                 Permite a tus contratistas, maestros de obra, talleres y subdistribuidores armar su propia cotización desde la obra o taller a cualquier hora. El pedido te llega masticado a WhatsApp listo para facturar.
