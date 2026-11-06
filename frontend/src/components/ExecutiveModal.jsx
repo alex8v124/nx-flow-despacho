@@ -126,6 +126,11 @@ export default function ExecutiveModal({
     return JSON.stringify(sample, null, 2);
   }, [ordersHistory]);
 
+  const clientPortalUrl = useMemo(() => {
+    const origin = typeof window !== 'undefined' ? window.location.origin : 'https://nx-flow-ttl-liart.vercel.app';
+    return `${origin}/?mode=cliente&sede=${sedeId}`;
+  }, [sedeId]);
+
   const handleCopyJson = () => {
     navigator.clipboard.writeText(sampleJsonWebhook);
     setCopied(true);
@@ -320,6 +325,15 @@ export default function ExecutiveModal({
             }`}
           >
             🔗 Conector ERP & Webhook
+          </button>
+          <button
+            type="button"
+            onClick={() => setTab('portal')}
+            className={`rounded-xl px-3 py-1.5 transition-all ${
+              tab === 'portal' ? 'bg-cyan-400 text-ink-950' : 'bg-ink-800 text-slate-400 hover:text-white'
+            }`}
+          >
+            📱 Portal Clientes (QR)
           </button>
         </div>
 
@@ -554,6 +568,64 @@ export default function ExecutiveModal({
           </div>
         )}
 
+        {/* TAB 5: PORTAL CLIENTES (AUTODESPACHO B2B / QR) */}
+        {tab === 'portal' && (
+          <div className="mt-3 space-y-4">
+            <div className="rounded-2xl border border-cyan-500/30 bg-cyan-500/5 p-4">
+              <div className="flex items-center justify-between">
+                <h3 className="text-sm font-bold text-white">Portal B2B de Autopedido para Clientes</h3>
+                <span className="rounded bg-cyan-500/20 px-2 py-0.5 text-[10px] font-bold text-cyan-300">Caso 2: Autodespacho</span>
+              </div>
+              <p className="mt-1 text-xs text-slate-300 leading-relaxed">
+                Permite a tus contratistas, maestros de obra, talleres y subdistribuidores armar su propia cotización desde la obra o taller a cualquier hora. El pedido te llega masticado a WhatsApp listo para facturar.
+              </p>
+
+              <div className="mt-4 flex flex-col sm:flex-row items-center gap-4 rounded-xl border border-ink-700 bg-ink-800/80 p-4">
+                <div className="shrink-0 flex flex-col items-center">
+                  <img
+                    src={`https://api.qrserver.com/v1/create-qr-code/?size=150x150&margin=4&data=${encodeURIComponent(clientPortalUrl)}`}
+                    alt="QR Portal Clientes"
+                    width="140"
+                    height="140"
+                    className="rounded-xl border border-ink-600 bg-white p-1.5 shadow-md"
+                  />
+                  <span className="mt-1.5 text-[10px] text-slate-400 font-mono">Escanear para probar</span>
+                </div>
+
+                <div className="flex-1 space-y-2 text-xs">
+                  <label className="text-[11px] font-bold uppercase tracking-wider text-slate-400">
+                    Enlace Directo para Clientes:
+                  </label>
+                  <div className="flex gap-2">
+                    <input
+                      type="text"
+                      readOnly
+                      value={clientPortalUrl}
+                      className="h-10 flex-1 rounded-xl border border-ink-600 bg-ink-900 px-3 text-xs text-cyan-300 font-mono outline-none"
+                    />
+                    <button
+                      type="button"
+                      onClick={() => {
+                        navigator.clipboard.writeText(clientPortalUrl);
+                        setCopied(true);
+                        setTimeout(() => setCopied(false), 2000);
+                      }}
+                      className="shrink-0 rounded-xl bg-cyan-400 px-3 py-2 text-xs font-bold text-ink-950 hover:bg-cyan-300 active:scale-95 transition-all"
+                    >
+                      {copied ? '✓ ¡Copiado!' : 'Copiar Link'}
+                    </button>
+                  </div>
+                  <ul className="mt-2 list-disc pl-4 space-y-1 text-[11px] text-slate-300">
+                    <li><strong>Zero-Login:</strong> El cliente no necesita crear contraseñas ni descargar apps.</li>
+                    <li><strong>Privacidad de Negocio:</strong> El cliente no ve este Panel Gerencial ni los márgenes internos.</li>
+                    <li><strong>Directo a tu WhatsApp:</strong> Cada pedido se envía directo al número central de la distribuidora.</li>
+                  </ul>
+                </div>
+              </div>
+            </div>
+          </div>
+        )}
+
         {/* TAB 4: CONECTOR ERP & WEBHOOK */}
         {tab === 'webhook' && (
           <div className="mt-3 space-y-4">
@@ -644,6 +716,64 @@ export default function ExecutiveModal({
                   {copied ? <IconCheck width={14} height={14} /> : null}
                   {copied ? '¡Payload Copiado!' : 'Copiar Webhook JSON (Nubefact / ERP)'}
                 </button>
+              </div>
+            </div>
+          </div>
+        )}
+
+        {/* TAB 5: PORTAL CLIENTES (AUTODESPACHO B2B / QR) */}
+        {tab === 'portal' && (
+          <div className="mt-3 space-y-4">
+            <div className="rounded-2xl border border-cyan-500/30 bg-cyan-500/5 p-4">
+              <div className="flex items-center justify-between">
+                <h3 className="text-sm font-bold text-white">Portal B2B de Autopedido para Clientes</h3>
+                <span className="rounded bg-cyan-500/20 px-2 py-0.5 text-[10px] font-bold text-cyan-300">Caso 2: Autodespacho</span>
+              </div>
+              <p className="mt-1 text-xs text-slate-300 leading-relaxed">
+                Permite a tus contratistas, maestros de obra, talleres y subdistribuidores armar su propia cotización desde la obra o taller a cualquier hora. El pedido te llega masticado a WhatsApp listo para facturar.
+              </p>
+
+              <div className="mt-4 flex flex-col sm:flex-row items-center gap-4 rounded-xl border border-ink-700 bg-ink-800/80 p-4">
+                <div className="shrink-0 flex flex-col items-center">
+                  <img
+                    src={`https://api.qrserver.com/v1/create-qr-code/?size=150x150&margin=4&data=${encodeURIComponent(clientPortalUrl)}`}
+                    alt="QR Portal Clientes"
+                    width="140"
+                    height="140"
+                    className="rounded-xl border border-ink-600 bg-white p-1.5 shadow-md"
+                  />
+                  <span className="mt-1.5 text-[10px] text-slate-400 font-mono">Escanear para probar</span>
+                </div>
+
+                <div className="flex-1 space-y-2 text-xs">
+                  <label className="text-[11px] font-bold uppercase tracking-wider text-slate-400">
+                    Enlace Directo para Clientes:
+                  </label>
+                  <div className="flex gap-2">
+                    <input
+                      type="text"
+                      readOnly
+                      value={clientPortalUrl}
+                      className="h-10 flex-1 rounded-xl border border-ink-600 bg-ink-900 px-3 text-xs text-cyan-300 font-mono outline-none"
+                    />
+                    <button
+                      type="button"
+                      onClick={() => {
+                        navigator.clipboard.writeText(clientPortalUrl);
+                        setCopied(true);
+                        setTimeout(() => setCopied(false), 2000);
+                      }}
+                      className="shrink-0 rounded-xl bg-cyan-400 px-3 py-2 text-xs font-bold text-ink-950 hover:bg-cyan-300 active:scale-95 transition-all"
+                    >
+                      {copied ? '✓ ¡Copiado!' : 'Copiar Link'}
+                    </button>
+                  </div>
+                  <ul className="mt-2 list-disc pl-4 space-y-1 text-[11px] text-slate-300">
+                    <li><strong>Zero-Login:</strong> El cliente no necesita crear contraseñas ni descargar apps.</li>
+                    <li><strong>Privacidad de Negocio:</strong> El cliente no ve este Panel Gerencial ni los márgenes internos.</li>
+                    <li><strong>Directo a tu WhatsApp:</strong> Cada pedido se envía directo al número central de la distribuidora.</li>
+                  </ul>
+                </div>
               </div>
             </div>
           </div>

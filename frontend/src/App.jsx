@@ -39,6 +39,13 @@ const TARIFAS = {
 
 export default function App() {
   const online = useOnline();
+  // Detección de Caso de Uso 2: Portal B2B de Autopedido para Clientes/Contratistas
+  const isClientPortal = useMemo(() => {
+    if (typeof window === 'undefined') return false;
+    const params = new URLSearchParams(window.location.search);
+    return params.get('mode') === 'cliente' || params.get('portal') === 'b2b';
+  }, []);
+
   // Catálogo dinámico: soporta el Data Sync Worker (actualización de precios vía CSV/Excel)
   const [products, setProducts] = useState(() => store.get('nf.custom_catalog', catalogData.products));
   const searchIndex = useMemo(() => buildIndex(products), [products]);
@@ -436,10 +443,12 @@ export default function App() {
               <div className="flex items-center gap-1.5 leading-none">
                 <span className="text-base font-black tracking-tight text-white">NODUX FLOW</span>
                 <span className="rounded bg-cyan-500/15 px-1.5 py-0.5 font-mono text-[10px] font-semibold text-cyan-300">
-                  v0.1
+                  {isClientPortal ? 'B2B' : 'v0.1'}
                 </span>
               </div>
-              <span className="text-[10px] text-slate-400">Terminal Móvil de Despacho B2B</span>
+              <span className="text-[10px] text-slate-400">
+                {isClientPortal ? 'Portal de Autopedido para Clientes' : 'Terminal Móvil de Despacho B2B'}
+              </span>
             </div>
           </div>
 
@@ -495,13 +504,19 @@ export default function App() {
             ))}
           </div>
 
-          <button
-            type="button"
-            onClick={() => setExecOpen(true)}
-            className="flex shrink-0 items-center gap-1 rounded-lg border border-emerald-500/40 bg-emerald-500/10 px-2.5 py-1 text-[11px] font-bold text-emerald-300 hover:bg-emerald-500/20 active:scale-95 transition-all"
-          >
-            📊 Panel Gerencial
-          </button>
+          {!isClientPortal ? (
+            <button
+              type="button"
+              onClick={() => setExecOpen(true)}
+              className="flex shrink-0 items-center gap-1 rounded-lg border border-emerald-500/40 bg-emerald-500/10 px-2.5 py-1 text-[11px] font-bold text-emerald-300 hover:bg-emerald-500/20 active:scale-95 transition-all"
+            >
+              📊 Panel Gerencial
+            </button>
+          ) : (
+            <span className="flex shrink-0 items-center gap-1 rounded-lg border border-cyan-500/30 bg-cyan-500/10 px-2.5 py-1 text-[11px] font-bold text-cyan-300">
+              ⚡ Pedido Directo
+            </span>
+          )}
         </div>
 
         {/* Buscador reactivo ultraligero */}
