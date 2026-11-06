@@ -1,0 +1,248 @@
+AWSTemplateFormatVersion: '2010-09-09'
+Transform: AWS::Serverless-2016-10-31
+Description: >
+  Nodux Flow — Arquitectura Serverless para Terminal Transaccional B2B.
+  S3 + CloudFront (PWA) + HTTP API + Lambda (Graviton3 ARM64) + DynamoDB Single-Table.
+
+Parameters:
+  Environment:
+    Type: String
+    Default: prod
+    AllowedValues: [dev, staging, prod]
+    Description: Entorno de despliegue.
+
+  IgvRate:
+    Type: String
+    Default: '0.18'
+    Description: Tasa estándar de IGV (Perú).
+
+  ReservationTtlMinutes:
+    Type: Number
+    Default: 30
+    Description: Minutos de vigencia de la reserva antes de expirar.
+
+  # Secretos de integraciones opcionales (Setup Up-Sell)
+  CulqiWebhookSecret:
+    Type: String
+    NoEcho: true
+    Default: ''
+    Description: Secreto HMAC del webhook de Culqi (opcional).
+
+  NubefactApiUrl:
+    Type: String
+    Default: ''
+    Description: URL del endpoint Nubefact del cliente (ej. https://api.nubefact.com/api/v1/...).
+
+  NubefactApiToken:
+    Type: String
+    NoEcho: true
+    Default: ''
+    Description: Token de autenticación de Nubefact (opcional).
+
+Globals:
+  Function:
+    Timeout: 10
+    MemorySize: 512
+    Architectures:
+      - arm64 # AWS Graviton3: menor latencia, ~20% ahorro en costo de cómputo
+    Runtime: nodejs22.x
+    LoggingConfig:
+      LogFormat: JSON
+
+Resources:
+  # =========================================================================
+  # 1. DynamoDB: Single-Table Design con Pay-Per-Request (FinOps)
+  # =========================================================================
+  NoduxSingleTable:
+    Type: AWS::DynamoDB::Table
+    Properties:
+      TableName: !Sub 'nodux-flow-table-${Environment}'
+      BillingMode: PAY_PER_REQUEST
+      AttributeDefinitions:
+        - AttributeName: PK
+          AttributeType: S
+        - AttributeName: SK
+          AttributeType: S
+      KeySchema:
+        - AttributeName: PK
+          KeyType: HASH
+        - AttributeName: SK
+          KeyType: RANGE
+      PointInTimeRecoverySpecification:
+        PointInTimeRecoveryEnabled: true
+      SSESpecification:
+        SSEEnabled: true
+      TimeToLiveSpecification:
+        AttributeName: ttl
+        Enabled: true
+      Tags:
+        - Key: Project
+          Value: NoduxFlow
+        - Key: Environment
+          Value: !Ref Environment
+
+  # =========================================================================
+  # 2. Backend Serverless: Lambda + HTTP API Gateway v2
+  # =========================================================================
+  HttpApi:
+    Type: AWS::Serverless::HttpApi
+    Properties:
+      CorsConfiguration:
+        AllowOrigins:
+          - '*'
+        AllowMethods:
+          - GET
+          - POST
+          - OPTIONS
+        AllowHeaders:
+          - Content-Type
+          - Authorization
+          - x-nodux-signature
+          - x-culqi-signature
+          - x-nubefact-signature
+        MaxAge: 600
+
+  TransactionalFunction:
+    Type: AWS::Serverless::Function
+    Properties:
+      FunctionName: !Sub 'nodux-flow-api-${Environment}'
+      CodeUri: ../backend/
+      Handler: src/handler.handler
+      Description: Microservicio transaccional ligero con reservas atómicas y desacople de webhooks.
+      Environment:
+        Variables:
+          NODE_ENV: production
+          TABLE_NAME: !Ref NoduxSingleTable
+          IGV_RATE: !Ref IgvRate
+          RESERVATION_TTL_MINUTES: !Ref ReservationTtlMinutes
+          CULQI_WEBHOOK_SECRET: !Ref CulqiWebhookSecret
+          NUBEFACT_API_URL: !Ref NubefactApiUrl
+          NUBEFACT_API_TOKEN: !Ref NubefactApiToken
+      Policies:
+        # Principio de mínimo privilegio para DynamoDB
+        - Statement:
+            - Effect: Allow
+              Action:
+                - dynamodb:GetItem
+                - dynamodb:PutItem
+                - dynamodb:UpdateItem
+                - dynamodb:Query
+                - dynamodb:BatchGetItem
+                - dynamodb:BatchWriteItem
+              Resource: !GetAtt NoduxSingleTable.Arn
+      Events:
+        ApiCatchAll:
+          Type: HttpApi
+          Properties:
+            ApiId: !Ref HttpApi
+            Path: /{proxy+}
+            Method: ANY
+        ApiRoot:
+          Type: HttpApi
+          Properties:
+            ApiId: !Ref HttpApi
+            Path: /
+            Method: ANY
+
+  # =========================================================================
+  # 3. Frontend Hosting: S3 + CloudFront (OAC)
+  # =========================================================================
+  FrontendBucket:
+    Type: AWS::S3::Bucket
+    Properties:
+      BucketName: !Sub 'nodux-flow-app-${Environment}-${AWS::AccountId}'
+      PublicAccessBlockConfiguration:
+        BlockPublicAcls: true
+        BlockPublicPolicy: true
+        IgnorePublicAcls: true
+        RestrictPublicBuckets: true
+      BucketEncryption:
+        ServerSideEncryptionConfiguration:
+          - ServerSideEncryptionByDefault:
+              SSEAlgorithm: AES256
+
+  CloudFrontOAC:
+    Type: AWS::CloudFront::OriginAccessControl
+    Properties:
+      OriginAccessControlConfig:
+        Name: !Sub 'nodux-flow-oac-${Environment}'
+        OriginAccessControlOriginType: s3
+        SigningBehavior: always
+        SigningProtocol: sigv4
+
+  FrontendBucketPolicy:
+    Type: AWS::S3::BucketPolicy
+    Properties:
+      Bucket: !Ref FrontendBucket
+      PolicyDocument:
+        Statement:
+          - Action: s3:GetObject
+            Effect: Allow
+            Principal:
+              Service: cloudfront.amazonaws.com
+            Resource: !Sub '${FrontendBucket.Arn}/*'
+            Condition:
+              StringEquals:
+                AWS:SourceArn: !Sub 'arn:aws:cloudfront::${AWS::AccountId}:distribution/${CloudFrontDistribution}'
+
+  CloudFrontDistribution:
+    Type: AWS::CloudFront::Distribution
+    Properties:
+      DistributionConfig:
+        Enabled: true
+        Comment: !Sub 'Nodux Flow Distribución PWA (${Environment})'
+        DefaultRootObject: index.html
+        PriceClass: PriceClass_100 # Distribución en América y Europa (óptimo costo)
+        HttpVersion: http2and3
+        Origins:
+          - Id: S3Origin
+            DomainName: !GetAtt FrontendBucket.RegionalDomainName
+            OriginAccessControlId: !GetAtt CloudFrontOAC.Id
+            S3OriginConfig: {}
+          - Id: ApiOrigin
+            DomainName: !Sub '${HttpApi}.execute-api.${AWS::Region}.amazonaws.com'
+            CustomOriginConfig:
+              HTTPSPort: 443
+              OriginProtocolPolicy: https-only
+        DefaultCacheBehavior:
+          TargetOriginId: S3Origin
+          ViewerProtocolPolicy: redirect-to-https
+          Compress: true
+          AllowedMethods: [GET, HEAD, OPTIONS]
+          CachedMethods: [GET, HEAD]
+          CachePolicyId: 658327ea-f89d-4fab-a63d-7e8863e94206 # CachingOptimized (Managed)
+        CacheBehaviors:
+          # Ruta /api/* hacia HTTP API sin caché
+          - PathPattern: /api/*
+            TargetOriginId: ApiOrigin
+            ViewerProtocolPolicy: https-only
+            AllowedMethods: [GET, HEAD, OPTIONS, PUT, POST, PATCH, DELETE]
+            CachePolicyId: 4135ea2d-6df8-44a3-9df3-4b5a84be39ad # CachingDisabled (Managed)
+            OriginRequestPolicyId: b684b0a6-5310-40d8-80e0-4b80f5f04306 # AllViewerExceptHostHeader
+        CustomErrorResponses:
+          # SPA / PWA fallback para routing del lado cliente
+          - ErrorCode: 403
+            ResponseCode: 200
+            ResponsePagePath: /index.html
+            ErrorCachingMinTTL: 0
+          - ErrorCode: 404
+            ResponseCode: 200
+            ResponsePagePath: /index.html
+            ErrorCachingMinTTL: 0
+
+Outputs:
+  CloudFrontEndpoint:
+    Description: URL pública HTTPS de la terminal PWA (CloudFront)
+    Value: !Sub 'https://${CloudFrontDistribution.DomainName}'
+
+  HttpApiEndpoint:
+    Description: Endpoint directo del API Gateway HTTP
+    Value: !Sub 'https://${HttpApi}.execute-api.${AWS::Region}.amazonaws.com'
+
+  DynamoDBTableName:
+    Description: Nombre de la tabla DynamoDB Single-Table
+    Value: !Ref NoduxSingleTable
+
+  FrontendBucketName:
+    Description: Bucket S3 para desplegar los estáticos de la PWA
+    Value: !Ref FrontendBucket

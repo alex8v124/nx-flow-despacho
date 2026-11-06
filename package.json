@@ -1,0 +1,23 @@
+{
+  "name": "nodux-flow",
+  "version": "0.1.0",
+  "private": true,
+  "description": "Nodux Flow — Terminal transaccional ligera para distribuidoras B2B (PWA + AWS Serverless)",
+  "workspaces": [
+    "frontend",
+    "backend"
+  ],
+  "scripts": {
+    "dev": "npm run dev -w frontend",
+    "build": "npm run build -w frontend",
+    "test": "npm test -w backend",
+    "db:up": "docker compose up -d dynamodb",
+    "db:down": "docker compose down",
+    "db:init": "npm run db:init -w backend",
+    "test:concurrency": "npm run test:concurrency -w backend",
+    "api:local": "npm run local -w backend"
+  },
+  "engines": {
+    "node": ">=20"
+  }
+}

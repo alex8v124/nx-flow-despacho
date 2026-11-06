@@ -1,0 +1,58 @@
+{
+  "currency": "PEN",
+  "igvRate": 0.18,
+  "pricesIncludeIgv": true,
+  "sedes": [
+    { "id": "LIMA-01", "name": "Lima · Cercado", "whatsapp": "" },
+    { "id": "LIMA-02", "name": "Lima · Ate", "whatsapp": "" },
+    { "id": "ARQ-01", "name": "Arequipa · Parque Industrial", "whatsapp": "" }
+  ],
+  "products": [
+    { "sku": "TUB-PVC-110", "name": "Tubo PVC desagüe 4\" x 3 m", "category": "Tuberías PVC", "unit": "UND", "priceCents": 3850, "stock": { "LIMA-01": 180, "LIMA-02": 95, "ARQ-01": 60 } },
+    { "sku": "TUB-PVC-050", "name": "Tubo PVC desagüe 2\" x 3 m", "category": "Tuberías PVC", "unit": "UND", "priceCents": 1690, "stock": { "LIMA-01": 240, "LIMA-02": 130, "ARQ-01": 88 } },
+    { "sku": "TUB-CPV-012", "name": "Tubo PVC agua fría C-10 1/2\" x 5 m", "category": "Tuberías PVC", "unit": "UND", "priceCents": 1250, "stock": { "LIMA-01": 310, "LIMA-02": 150, "ARQ-01": 75 } },
+    { "sku": "CDO-PVC-110", "name": "Codo PVC desagüe 4\" x 90°", "category": "Tuberías PVC", "unit": "UND", "priceCents": 650, "stock": { "LIMA-01": 420, "LIMA-02": 200, "ARQ-01": 140 } },
+    { "sku": "TEE-PVC-050", "name": "Tee PVC desagüe 2\"", "category": "Tuberías PVC", "unit": "UND", "priceCents": 320, "stock": { "LIMA-01": 380, "LIMA-02": 210, "ARQ-01": 96 } },
+    { "sku": "PEG-PVC-025", "name": "Pegamento para PVC 1/4 gal", "category": "Tuberías PVC", "unit": "LATA", "priceCents": 3290, "stock": { "LIMA-01": 64, "LIMA-02": 22, "ARQ-01": 18 } },
+    { "sku": "VAL-ESF-012", "name": "Válvula esférica de bronce 1/2\"", "category": "Tuberías PVC", "unit": "UND", "priceCents": 2490, "stock": { "LIMA-01": 85, "LIMA-02": 40, "ARQ-01": 12 } },
+
+    { "sku": "CAB-THW-014", "name": "Cable THW 14 AWG rojo", "category": "Eléctricos", "unit": "ROLLO 100 m", "priceCents": 18900, "stock": { "LIMA-01": 48, "LIMA-02": 20, "ARQ-01": 9 } },
+    { "sku": "CAB-THW-012", "name": "Cable THW 12 AWG negro", "category": "Eléctricos", "unit": "ROLLO 100 m", "priceCents": 27500, "stock": { "LIMA-01": 36, "LIMA-02": 14, "ARQ-01": 6 } },
+    { "sku": "CAB-NMT-216", "name": "Cable mellizo NMT 2x16 AWG", "category": "Eléctricos", "unit": "ROLLO 100 m", "priceCents": 16500, "stock": { "LIMA-01": 30, "LIMA-02": 18, "ARQ-01": 10 } },
+    { "sku": "ITM-2X16-A", "name": "Interruptor termomagnético 2x16 A", "category": "Eléctricos", "unit": "UND", "priceCents": 3490, "stock": { "LIMA-01": 120, "LIMA-02": 60, "ARQ-01": 25 } },
+    { "sku": "ITM-2X32-A", "name": "Interruptor termomagnético 2x32 A", "category": "Eléctricos", "unit": "UND", "priceCents": 3990, "stock": { "LIMA-01": 90, "LIMA-02": 45, "ARQ-01": 20 } },
+    { "sku": "TOM-DOB-LT", "name": "Tomacorriente doble con línea a tierra", "category": "Eléctricos", "unit": "UND", "priceCents": 1290, "stock": { "LIMA-01": 260, "LIMA-02": 110, "ARQ-01": 70 } },
+    { "sku": "CIN-AIS-034", "name": "Cinta aislante vinílica 3/4\" x 20 m", "category": "Eléctricos", "unit": "UND", "priceCents": 450, "stock": { "LIMA-01": 600, "LIMA-02": 320, "ARQ-01": 150 } },
+    { "sku": "LED-T8-18W", "name": "Tubo LED T8 18 W 120 cm luz día", "category": "Eléctricos", "unit": "UND", "priceCents": 990, "stock": { "LIMA-01": 340, "LIMA-02": 160, "ARQ-01": 80 } },
+
+    { "sku": "PER-HEX-038", "name": "Perno hexagonal G5 3/8\" x 2\" zincado", "category": "Fijaciones", "unit": "CAJA x50", "priceCents": 4250, "stock": { "LIMA-01": 75, "LIMA-02": 30, "ARQ-01": 16 } },
+    { "sku": "TUE-HEX-038", "name": "Tuerca hexagonal 3/8\" zincada", "category": "Fijaciones", "unit": "CAJA x100", "priceCents": 2190, "stock": { "LIMA-01": 90, "LIMA-02": 42, "ARQ-01": 20 } },
+    { "sku": "ARA-PLA-038", "name": "Arandela plana 3/8\" zincada", "category": "Fijaciones", "unit": "CAJA x100", "priceCents": 1450, "stock": { "LIMA-01": 110, "LIMA-02": 50, "ARQ-01": 24 } },
+    { "sku": "TOR-AUT-101", "name": "Tornillo autorroscante 10 x 1\" punta broca", "category": "Fijaciones", "unit": "CAJA x100", "priceCents": 1890, "stock": { "LIMA-01": 140, "LIMA-02": 65, "ARQ-01": 30 } },
+    { "sku": "ANC-EXP-038", "name": "Anclaje expansivo 3/8\" x 3\"", "category": "Fijaciones", "unit": "CAJA x25", "priceCents": 3790, "stock": { "LIMA-01": 55, "LIMA-02": 25, "ARQ-01": 8 } },
+    { "sku": "CLA-CAB-030", "name": "Clavo con cabeza 3\"", "category": "Fijaciones", "unit": "KG", "priceCents": 690, "stock": { "LIMA-01": 500, "LIMA-02": 250, "ARQ-01": 180 } },
+
+    { "sku": "TAL-PER-012", "name": "Taladro percutor 1/2\" 750 W", "category": "Herramientas", "unit": "UND", "priceCents": 28900, "stock": { "LIMA-01": 4, "LIMA-02": 2, "ARQ-01": 0 } },
+    { "sku": "AMO-ANG-412", "name": "Amoladora angular 4 1/2\" 850 W", "category": "Herramientas", "unit": "UND", "priceCents": 21900, "stock": { "LIMA-01": 7, "LIMA-02": 3, "ARQ-01": 2 } },
+    { "sku": "BRO-CON-005", "name": "Juego de brocas para concreto 5 pzs", "category": "Herramientas", "unit": "JUEGO", "priceCents": 3490, "stock": { "LIMA-01": 45, "LIMA-02": 20, "ARQ-01": 11 } },
+    { "sku": "LLA-AJU-010", "name": "Llave ajustable 10\" cromada", "category": "Herramientas", "unit": "UND", "priceCents": 3290, "stock": { "LIMA-01": 38, "LIMA-02": 15, "ARQ-01": 9 } },
+    { "sku": "WIN-MET-005", "name": "Wincha metálica 5 m", "category": "Herramientas", "unit": "UND", "priceCents": 1890, "stock": { "LIMA-01": 95, "LIMA-02": 40, "ARQ-01": 22 } },
+    { "sku": "NIV-ALU-024", "name": "Nivel de aluminio 24\"", "category": "Herramientas", "unit": "UND", "priceCents": 2690, "stock": { "LIMA-01": 28, "LIMA-02": 12, "ARQ-01": 5 } },
+
+    { "sku": "DIS-COR-412", "name": "Disco de corte metal 4 1/2\" x 1 mm", "category": "Abrasivos y Soldadura", "unit": "CAJA x25", "priceCents": 5490, "stock": { "LIMA-01": 60, "LIMA-02": 28, "ARQ-01": 14 } },
+    { "sku": "DIS-DES-412", "name": "Disco de desbaste 4 1/2\" x 6 mm", "category": "Abrasivos y Soldadura", "unit": "UND", "priceCents": 690, "stock": { "LIMA-01": 230, "LIMA-02": 100, "ARQ-01": 55 } },
+    { "sku": "SOL-601-018", "name": "Soldadura E6011 1/8\"", "category": "Abrasivos y Soldadura", "unit": "KG", "priceCents": 1990, "stock": { "LIMA-01": 150, "LIMA-02": 70, "ARQ-01": 40 } },
+    { "sku": "SOL-701-018", "name": "Soldadura E7018 1/8\"", "category": "Abrasivos y Soldadura", "unit": "KG", "priceCents": 2390, "stock": { "LIMA-01": 120, "LIMA-02": 55, "ARQ-01": 30 } },
+    { "sku": "LIJ-FIE-080", "name": "Lija de fierro grano 80", "category": "Abrasivos y Soldadura", "unit": "PAQ x50", "priceCents": 6490, "stock": { "LIMA-01": 26, "LIMA-02": 10, "ARQ-01": 6 } },
+
+    { "sku": "GUA-NIT-009", "name": "Guante de nitrilo industrial talla 9", "category": "Seguridad EPP", "unit": "PAR", "priceCents": 690, "stock": { "LIMA-01": 480, "LIMA-02": 220, "ARQ-01": 100 } },
+    { "sku": "CAS-SEG-BLA", "name": "Casco de seguridad blanco con rachet", "category": "Seguridad EPP", "unit": "UND", "priceCents": 2490, "stock": { "LIMA-01": 70, "LIMA-02": 35, "ARQ-01": 18 } },
+    { "sku": "LEN-SEG-CLA", "name": "Lentes de seguridad lente claro", "category": "Seguridad EPP", "unit": "UND", "priceCents": 590, "stock": { "LIMA-01": 300, "LIMA-02": 140, "ARQ-01": 60 } },
+    { "sku": "BOT-PUN-042", "name": "Botín de seguridad punta de acero T-42", "category": "Seguridad EPP", "unit": "PAR", "priceCents": 11900, "stock": { "LIMA-01": 12, "LIMA-02": 2, "ARQ-01": 4 } },
+    { "sku": "RES-N95-020", "name": "Respirador N95 con válvula", "category": "Seguridad EPP", "unit": "CAJA x20", "priceCents": 4990, "stock": { "LIMA-01": 40, "LIMA-02": 18, "ARQ-01": 10 } },
+
+    { "sku": "CEM-POR-425", "name": "Cemento Portland Tipo I", "category": "Construcción", "unit": "BOLSA 42.5 kg", "priceCents": 3150, "stock": { "LIMA-01": 900, "LIMA-02": 450, "ARQ-01": 300 } },
+    { "sku": "PIN-LAT-BLA", "name": "Pintura látex blanco interior", "category": "Construcción", "unit": "BALDE 4 gal", "priceCents": 11990, "stock": { "LIMA-01": 34, "LIMA-02": 16, "ARQ-01": 7 } },
+    { "sku": "SIL-NEU-280", "name": "Silicona neutra transparente 280 ml", "category": "Construcción", "unit": "UND", "priceCents": 1490, "stock": { "LIMA-01": 160, "LIMA-02": 75, "ARQ-01": 35 } }
+  ]
+}
